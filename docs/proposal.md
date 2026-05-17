@@ -43,4 +43,4 @@
     - approved with suggested revisions
     - or returned for revision if the scope or course fit is not yet clear enough
 - Final note
-  - Do not overthink this. You are not locking yourself into every detail right now. The goal is to propose something that is clearly within the spirit of the course: algorithmic problem solving, AI-assisted implementation, testing, and explanation.
+  - Do not overthink this. You are not locking yourself into every detail right now. The goal is to propose something that is clearly within the spirit of the course: algorithmic problem solving, AI-assisted implementation, testing, and explanation
