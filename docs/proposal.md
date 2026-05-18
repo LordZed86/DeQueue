@@ -9,7 +9,7 @@ Spring 2026
 
 ## 1. Project Title
 
-**DeQueue** — A Knapsack-Based Content Prioritizer for ADHD Users
+**DeQueue** — A Knapsack-Based Content Prioritization tool for ADHD Users
 
 ---
 
