@@ -20,6 +20,7 @@ A lot of people with ADHD end up with massive backlogs of articles, videos, and 
 DeQueue is a browser-based tool that addresses this directly[^1]. Users save links to a personal collection and tag each one with metadata: estimated read/watch time, topic, interest level, and energy required. When they're ready to actually sit down and consume something, they tell DeQueue how much time they have, and the app generates an optimized session — a curated shortlist that fits within that budget and maximizes value based on their preferences. Think of it as a smarter, kinder version of a reading list. The whole thing runs locally in the browser with no backend required[^2].
 
 [^1]: This is not set in stone yet, I would prefer this be more client side software/app based so the end product isn't constrained to internet based backlogs.
+
 [^2]: I was originally thinking of a browser extension, but that also limits the evolution of how this tool could be used.
 
 ---
@@ -51,6 +52,7 @@ As a stretch goal, I'd like to explore grouping related items by topic using a s
 This seems to align with the courses themes of optimization, tradeoff analysis, and choosing the right algorithmic approach for a constrained decision problem. The name "DeQueue" is a nod to the deque data structure — a double-ended queue — which felt appropriate for something that's constantly pulling items off a list.
 
 [^3]: I have little experience with dynamic programming principals, so this will add some difficulty to the scope of things.
+
 [^4]: This is a new concept to me, so it may or may not be included in the form of a similarity metric algorithm like the few I have seen.
 
 ---
@@ -113,6 +115,7 @@ I'll verify correctness at a few levels:
 
 ### Possible Failures
 
+<!--prettier-ignore-->
 | Failure | Mitigation |
 | --- | --- |
 | Floating-point time estimates breaking the table | I'll discretize everything to integer minutes on input |
@@ -138,16 +141,16 @@ This project isn't connected to a capstone or any other course right now — it'
 
 ## References (This section will probably be moved to a design doc in the future)
 
-*To be expanded — these are starting points and initial research for the problem motivation.*
+_To be expanded — these are starting points and initial research for the problem motivation._
 
-- Morein-Zamir, S., Kasese, M., Chamberlain, S. R., & Trachtenberg, E. (2022). Elevated levels of hoarding in ADHD: A special link with inattention. *Journal of Psychiatric Research, 145*, 167–174. [Journal of Psychiatric Research](https://doi.org/10.1016/j.jpsychires.2021.12.024)
+- Morein-Zamir, S., Kasese, M., Chamberlain, S. R., & Trachtenberg, E. (2022). Elevated levels of hoarding in ADHD: A special link with inattention. _Journal of Psychiatric Research, 145_, 167–174. [Journal of Psychiatric Research](https://doi.org/10.1016/j.jpsychires.2021.12.024)
   - Key finding: nearly 1 in 5 adults with ADHD exhibited clinically significant hoarding symptoms; the study found a strong link specifically with inattention rather than hyperactivity.
 
-- Sedera, D. et al. (2022). Modern-day hoarding: A model for understanding and measuring digital hoarding. [*Southern Cross University Digital Enterprise Lab.*](https://www.sciencedirect.com/science/article/abs/pii/S0378720622001094)
+- Sedera, D. et al. (2022). Modern-day hoarding: A model for understanding and measuring digital hoarding. [_Southern Cross University Digital Enterprise Lab._](https://www.sciencedirect.com/science/article/abs/pii/S0378720622001094)
   - Key finding: in a sample of 846 participants, 37% reported that digital hoarding led to feelings of anxiety.
 
-- Maynard, S. (2021). Information overload and ADHD. *ADDitude Magazine.* [additudemag.com](https://www.additudemag.com/too-much-information/)
+- Maynard, S. (2021). Information overload and ADHD. _ADDitude Magazine._ [additudemag.com](https://www.additudemag.com/too-much-information/)
   - Practical overview of why people with ADHD are disproportionately affected by information overload and accumulation.
 
-- *(Knapsack / DP algorithm references placeholder)*
-- *(Additional ADHD + productivity / tools placeholder)*
+- _(Knapsack / DP algorithm references placeholder)_
+- _(Additional ADHD + productivity / tools placeholder)_

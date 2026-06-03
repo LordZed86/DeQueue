@@ -121,4 +121,90 @@ A chronological record of decisions made, problems hit, and bugs found for each 
 
 ---
 
+---
+
+## Storage Layer
+
+**Date:** 2026-06-03
+
+### Files created
+
+- `src/utils/storage.js`
+- `src/utils/storage.test.js`
+
+### `src/utils/storage.js`
+
+#### Decisions
+
+- **localStorage over IndexedDB to start:** localStorage is synchronous and requires almost no setup — read a string, parse JSON, done. IndexedDB is async, requires transaction management, and is significantly more code. For a list of dozens of items, localStorage is plenty. The design doc explicitly planned for this migration path; `storage.js` is the single place it would happen.
+- **Two keys only:** `dequeue_items` (JSON array) and `dequeue_settings` (JSON object). Simple, predictable, easy to inspect in DevTools.
+- **`getItems()` never throws:** Wraps the `localStorage.getItem` + `JSON.parse` in a try/catch and returns `[]` on any failure. Corrupt storage should not crash the extension.
+- **`getPendingItems()` as the knapsack entry point:** Completed items must be excluded before the algorithm runs. This filter lives in storage so callers don't have to remember to do it.
+- **`saveSettings()` merges, not overwrites:** Callers can update one setting field without needing to read and re-write everything else. Prevents accidental data loss if settings grow over time.
+- **`clearAll()` only removes DeQueue keys:** Does not call `localStorage.clear()` — that would wipe any other data the browser has stored under the extension origin. Scoped removal is safer.
+- **`setItems()` is not exported:** It's an internal helper used by `saveItem`, `updateItem`, `deleteItem`, and `markCompleted`. Exposing it would let callers bypass the read-modify-write cycle and accidentally corrupt the list.
+
+#### Bugs / surprises
+
+- None. All 29 tests passed on the first run.
+
+### `src/utils/storage.test.js`
+
+#### Setup
+
+- Storage tests need a real `localStorage` implementation. Vitest runs in Node by default, which has no `localStorage`. Added `@vitest-environment jsdom` as a per-file docblock so only this test file gets the browser environment — the algorithm tests continue running in Node (faster).
+- Installed `jsdom` as a dev dependency to support the jsdom environment.
+- `beforeEach(() => clearAll())` ensures every test starts with a clean store. Without this, test order would matter and tests could interfere with each other.
+
+#### Test coverage rationale
+
+- **`getItems` with corrupt JSON:** localStorage can technically hold any string. If someone manually edits it or the write was interrupted, `JSON.parse` would throw. The test confirms we return `[]` gracefully instead of crashing.
+- **`updateItem` and `deleteItem` no-ops:** Both functions are called with an id. If the id doesn't exist (item was already deleted, or a stale reference), they must not throw and must not corrupt the list.
+- **`markCompleted` timestamp:** Two tests — one that passes an explicit timestamp (verifiable), one that checks the default `Date.now()` falls within a before/after bracket. The bracket approach avoids flakiness from timing.
+- **`clearAll` does not touch unrelated keys:** Protects against accidentally nuking other browser data stored at the same origin.
+
+---
+
+---
+
+## Session Queue
+
+**Date:** 2026-06-03
+
+### Files created
+
+- `src/core/queue.js`
+- `src/core/queue.test.js`
+
+### `src/core/queue.js`
+
+#### The idea
+
+The knapsack returns a flat array of selected items. Wrapping that in a queue lets the popup surface one item at a time — which is more ADHD-friendly than showing the full list and asking the user to choose where to start. It's also a direct nod to the app name: you literally **dequeue** from **DeQueue**.
+
+#### Decisions
+
+- **Class-based (`SessionQueue`):** A class with internal state (`_items`) is the clearest way to model a mutable queue — each method either reads or transforms the internal list. A functional approach (pure functions over an array) would have worked but would require the caller to pass the array back in on every call.
+- **`skip()` moves to the back instead of discarding:** If a user isn't in the mood for the current item, they shouldn't lose it — it cycles to the back and comes around again. This matches how ADHD users actually work: "not right now, but still this session."
+- **`peek()` returns `null` on empty (not an error):** The popup needs to know when the queue is exhausted to show a "session complete" state. Returning `null` is the natural signal; throwing would force every call site to use try/catch.
+- **`toArray()` returns a copy:** Callers can read the queue's contents for UI purposes (e.g. "1 of 4" progress) without being able to accidentally mutate the internal array.
+- **`buildSessionQueue()` sorts by descending value:** The highest-priority item surfaces first. Within a session, the user should encounter the most important thing while their attention is freshest.
+- **`_items` is private by convention (underscore prefix):** JavaScript doesn't enforce private fields without `#`, but the underscore signals clearly to future contributors that this array should not be touched directly.
+
+#### Bugs / surprises
+
+- None. All 23 tests passed on the first run.
+
+### `src/core/queue.test.js`
+
+#### Test coverage rationale
+
+- **`skip()` cycling test:** Three skips on a 3-item queue should return to the original front item. Verifies that skip is a true rotation, not a destructive operation.
+- **`skip()` on single-item queue:** Edge case — the item should stay at the front and size should remain 1. Without this test, a naive implementation that used `shift()` + `push()` on a length-1 array could accidentally behave differently.
+- **`toArray()` immutability:** Confirms that modifying the returned array doesn't touch the internal queue state — a common subtle bug when returning array references.
+- **`buildSessionQueue` sort order:** Checked both the full order and that `peek()` matches the highest-value item, as these are the two things the popup will actually use.
+- **Equal values:** Doesn't assert a specific order (that would be fragile) — just confirms no error is thrown when the sort comparator returns 0.
+
+---
+
 _This log will be updated as each new file or feature is built._

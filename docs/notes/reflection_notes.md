@@ -49,10 +49,51 @@ Running list of things worth thinking about for the final reflection paper and p
 - IndexedDB is async, requires understanding of transactions and object stores, and is much more code.
 - For a list of dozens of items, localStorage is plenty. Migration to IndexedDB is the right move if the list grows large or we need indexed queries, but we're not there yet.
 
+### Why add a queue on top of the knapsack output?
+
+- The knapsack returns a flat array — the queue gives that array behavior: a current item, a way to advance, a way to skip without losing the item.
+- It also directly ties the data structure to the app's name. The user literally dequeues from DeQueue.
+- One-at-a-time presentation is more ADHD-friendly than showing a full list and asking "which one?" — that's the same choice paralysis the app is trying to solve.
+- `skip()` moves to the back rather than discarding because the user may want that item later in the same session, just not right now.
+
+### Why does `buildSessionQueue` sort by descending value?
+
+- The knapsack optimizes for total value across the whole session but returns items in whatever order it happened to pick them.
+- Sorting by descending value ensures the highest-priority item surfaces first, when the user's attention is freshest.
+- This is a deliberate UX decision: the algorithm handles _which_ items to include; the sort handles _what order_ to present them.
+
+### Why start with localStorage instead of IndexedDB?
+
+- localStorage is synchronous and dead simple — read a string, parse JSON, done.
+- IndexedDB is async, requires understanding of transactions and object stores, and is much more code.
+- For a list of dozens of items, localStorage is plenty. Migration to IndexedDB is the right move if the list grows large or we need indexed queries, but we're not there yet.
+- All access goes through `storage.js` — nothing else touches localStorage directly — so migrating later is a single-file change.
+
+### Why does `saveSettings` merge instead of overwrite?
+
+- The options page will let users change one setting at a time (e.g. update the default budget without touching their saved mood preference).
+- If `saveSettings` overwrote the whole object, every caller would need to read all settings first, modify the one field, then write everything back. The merge approach lets callers just pass the field they're changing.
+
+### Why is `setItems` not exported?
+
+- It's a raw write — it replaces the entire list with whatever you pass. Exposing it would let any caller silently wipe the queue if they forgot to read first.
+- `saveItem`, `updateItem`, `deleteItem`, and `markCompleted` all do the read-modify-write cycle correctly. There's no safe reason for a caller to bypass them.
+
+### Why does `clearAll` only remove DeQueue keys instead of calling `localStorage.clear()`?
+
+- `localStorage.clear()` would wipe everything stored at the extension's origin, including any data that other extension components might store in the future.
+- Scoping the removal to `dequeue_items` and `dequeue_settings` is safer and less surprising.
+
 ### Why Vitest instead of Jest?
 
 - The project already uses Vite. Vitest shares its config, handles ESM natively, and requires zero additional setup.
 - Jest requires Babel or special transforms to handle ES modules. Extra complexity for no benefit here.
+
+### Why does the storage test file use `@vitest-environment jsdom` instead of a mock?
+
+- `localStorage` is a browser API — Node (where Vitest runs by default) doesn't have it.
+- jsdom is a headless DOM implementation that provides a real `localStorage`. Using it means the tests exercise the actual API rather than a mock that might behave differently.
+- The docblock is per-file, so only `storage.test.js` pays the jsdom startup cost. The algorithm and scoring tests continue running in fast Node mode.
 
 ---
 
@@ -82,6 +123,13 @@ These are questions worth answering honestly in the reflection paper.
 - "Staleness" as a factor — did this come from research on ADHD hoarding behavior, or was it a design assumption? What would you need to validate it?
 - Is the gamification layer (points, completion tracking) evidence-based? What does the ADHD research say about reward systems?
 
+### About the storage layer
+
+- The storage module has no algorithm — it's pure plumbing. Did you find it easier or harder to reason about than the knapsack? Why?
+- `getItems()` silently returns `[]` on corrupt JSON rather than throwing. Is that the right call? What would a user experience if storage corruption went undetected?
+- The test for `markCompleted`'s default timestamp uses a before/after bracket rather than mocking `Date.now`. What's the tradeoff between the two approaches?
+- If the queue grew to 500 items, localStorage would start to feel it (~5MB cap). What would the migration to IndexedDB actually look like? What would have to change outside of `storage.js`?
+
 ### About what you'd do differently
 
 - Would you keep the 2D DP table, or switch to 1D now that you understand it better?
@@ -101,6 +149,9 @@ These are questions worth answering honestly in the reflection paper.
 - "How did you verify correctness?" — Brute-force comparison on small inputs (≤15 items, all 2^n subsets), plus hand-verified known cases, plus edge case tests.
 - "Why did you choose these specific scoring factors?" — Design decision based on what signals an ADHD user would actually have access to and care about: their own interest rating, how fresh the content is, how long it's been waiting, and how it matches their current energy.
 - "What would you add if you had more time?" — P1 features: sort/filter UI, mark-as-done + points counter. P2 stretch: auto-fetch from reading lists, calendar integration, topic clustering (graph theory).
+- "Why did you add a queue if the knapsack already gives you a list?" — The knapsack answers _which_ items to include. The queue answers _how to present them_ — one at a time, in priority order, with a skip-without-losing mechanic. They solve different problems. The queue is also a direct nod to the app name.
+- "Why localStorage and not IndexedDB?" — localStorage is synchronous, requires no async handling, and is simple to debug. For a personal tool with a modest item count, it's plenty. All access is behind `storage.js`, so migrating later is a single-file change with no impact on the rest of the app.
+- "What happens if `localStorage` is full or unavailable?" — `getItems()` and `getSettings()` catch exceptions and return safe defaults. `saveItem` would throw silently in its current form — that's a known gap that could be addressed with a try/catch and a user-facing error message.
 
 ### Demo preparation
 

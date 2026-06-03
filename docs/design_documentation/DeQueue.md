@@ -14,7 +14,7 @@ DeQueue is a browser extension built on the WebExtensions API, targeting Firefox
 
 A WebExtension is made up of several distinct scripts that each run in different contexts and have different permissions:
 
-```Plaintext
+```plaintext
 src/
 ├── manifest.json          # Extension config — declares permissions, entry points
 ├── background/
@@ -32,10 +32,11 @@ src/
 │   ├── options.js
 │   └── options.css
 ├── core/
-│   └── knapsack.js        # Pure algorithmic logic — no DOM, no storage, no side effects
-│                          # This is the heart of the project
+│   ├── knapsack.js        # 0/1 knapsack DP — selects which items fit the budget
+│   │                      # Pure function: no DOM, no storage, no side effects
+│   └── queue.js           # SessionQueue — presents knapsack output one item at a time
 ├── utils/
-│   └── storage.js         # Thin wrapper around IndexedDB/localStorage
+│   ├── storage.js         # Thin wrapper around localStorage
 │   └── scoring.js         # Value function — computes priority score for each item
 └── assets/
     └── icons/             # Extension icon at various sizes (16, 48, 128px)
@@ -49,18 +50,20 @@ User clicks extension icon on a webpage
   → content.js scrapes the page and returns { title, url, description, estimatedTime, ... }
   → popup.js pre-fills the "Add Item" form with that metadata
   → User reviews/edits and confirms
-  → popup.js sends the new item to background.js
-  → background.js writes to storage
+  → popup.js calls saveItem() from utils/storage.js
 ```
 
 ### Data Flow (Generating a Session)
 
 ```plaintext
 User opens popup, sets a time budget
-  → popup.js reads all items from storage via background.js
-  → popup.js calls knapsack(budget, items) from core/knapsack.js
-  → knapsack returns an ordered selection of items
-  → popup.js renders the session list
+  → popup.js calls getPendingItems() from utils/storage.js
+  → popup.js calls scoreItems(items, { currentMood }) from utils/scoring.js
+  → popup.js calls knapsack(budget, scoredItems) from core/knapsack.js
+  → popup.js calls buildSessionQueue(result.selected) from core/queue.js
+  → popup.js renders the session view, showing queue.peek() as the current item
+  → User clicks Done → queue.dequeue(), markCompleted(id) in storage
+  → User clicks Skip → queue.skip() (item moves to back, stays in session)
 ```
 
 ---
@@ -90,6 +93,19 @@ Each saved item is an object with the following shape:
  */
 ```
 
+### Settings
+
+User preferences stored in localStorage under `dequeue_settings`:
+
+```js
+/**
+ * @typedef {Object} Settings
+ * @property {number}  defaultBudget  - Default time budget shown in popup (minutes); default 20
+ * @property {string}  [defaultMood]  - Pre-selected mood tag; null means none
+ * @property {ScoringWeights} [weights] - Custom scoring weights; null means use defaults
+ */
+```
+
 ### Open Questions
 
 - TODO: Do we want a `source` field to track where an item came from (manual, auto-scraped)?
@@ -104,72 +120,145 @@ Each saved item is an object with the following shape:
 
 The session generator is a classic **0/1 knapsack**: given a set of items each with a weight (time) and value (priority score), select a subset that maximizes total value without exceeding a capacity (time budget).
 
-- **Capacity** = user's time budget in minutes (integer)
-- **Weight** of each item = `timeEstimate` (rounded to nearest minute on input)
-- **Value** of each item = computed `priority` score (see Scoring section below)
+- **Capacity** = user's time budget in minutes, capped at `MAX_BUDGET_MINUTES` (60)
+- **Weight** of each item = `timeEstimate` (whole minutes; fractional weights not supported)
+- **Value** of each item = computed `priority` score from `utils/scoring.js`
 
-The algorithm lives entirely in `core/knapsack.js` and has no dependencies on storage, the DOM, or any other module. This makes it easy to test in isolation.
+The algorithm lives entirely in `core/knapsack.js` and has no dependencies on storage, the DOM, or any other module.
 
-### Approach
+### Implementation
 
-Standard bottom-up DP. Build a 2D table `dp[i][w]` = best value using items `0..i` with capacity `w`.
+Bottom-up DP with a 2D table and backtracking. The 2D table (rather than the space-optimized 1D rolling array) was chosen because backtracking requires the full row history, and the 60-minute cap keeps the table small.
 
 ```js
-// pseudocode — you'll implement this
-for each item i:
-  for each capacity w from maxBudget down to item.weight:
-    dp[w] = max(dp[w], dp[w - item.weight] + item.value)
+// dp[i][w] = best value using items 0..i-1 with capacity w
+const dp = Array.from({ length: n + 1 }, () => new Int32Array(cap + 1));
+
+for (let i = 1; i <= n; i++) {
+  const item = candidates[i - 1];
+  for (let w = 0; w <= cap; w++) {
+    if (item.weight > w) {
+      dp[i][w] = dp[i - 1][w];
+    } else {
+      dp[i][w] = Math.max(
+        dp[i - 1][w],
+        dp[i - 1][w - item.weight] + item.value
+      );
+    }
+  }
+}
+
+// Backtrack to recover which items were selected
+let w = cap;
+for (let i = n; i >= 1; i--) {
+  if (dp[i][w] !== dp[i - 1][w]) {
+    selected.push(candidates[i - 1]);
+    w -= candidates[i - 1].weight;
+  }
+}
 ```
 
-After the table is filled, backtrack to identify which items were selected.
+### Key decisions
+
+- **Max budget: 60 minutes.** The use case is gap-filling (waiting rooms, lunch breaks), not day-planning. 60 minutes keeps the table small and the UX honest.
+- **Items with `weight < 1` or `weight > cap` filtered before the table is built.** Zero-weight items would be selected for free every time. Items over the cap can never fit.
+- **`knapsackBruteForce` exported alongside `knapsack`.** Used in tests to verify the DP result against an exhaustive 2^n search on small inputs.
 
 ### Correctness Verification
 
-Verify the DP solution against a brute-force exhaustive search on small inputs (≤15 items). The brute-force tries all 2^n subsets — too slow for real use but a reliable ground truth for testing.
-
-### Open Questions
-
-- TODO: Decide on the DP table granularity. Minutes are fine for now — revisit if users want sub-minute precision.
-- TODO: What happens when no item fits in the budget? Return empty set with a user-facing message.
-- TODO: What's the max budget we want to support? Caps the table size. 480 minutes (8 hours) seems reasonable.
+The DP solution is verified against `knapsackBruteForce` on multiple small inputs (≤15 items) in `knapsack.test.js`. Both must agree on `totalValue` for any given input/budget pair.
 
 ---
 
-## 4. Scoring / Value Function
+## 4. Session Queue
 
-Each item's `priority` score is computed by `utils/scoring.js` before being passed to the knapsack. This is where the "smarter" part lives.
+After the knapsack selects which items to include, `core/queue.js` wraps the result in a `SessionQueue` that presents items one at a time.
 
-### Inputs to the Score
+### Why a queue?
 
-| Factor       | Source                                 | Notes                                                         |
-| ------------ | -------------------------------------- | ------------------------------------------------------------- |
-| `interest`   | User-assigned (1–5)                    | Direct signal of how much they want to see this               |
-| `recency`    | Derived from `addedAt`                 | Newer items get a small boost                                 |
-| `staleness`  | Derived from `addedAt`                 | Items sitting too long gradually gain priority (decay factor) |
-| `mood` match | User's current mood vs item's mood tag | Bonus if they match                                           |
+The knapsack answers _which_ items fit the budget. The queue answers _how to present them_ — one at a time, in priority order, with a skip mechanism. Surfacing a single item reduces choice paralysis, which is the same problem the whole app is designed to address.
 
-### Open Questions
+It also gives the app its name: the user literally **dequeues** from **DeQueue**.
 
-- TODO: How do we weight these factors relative to each other? This needs experimentation.
-- TODO: Should weights be user-configurable in the options page, or keep it simple and hardcode reasonable defaults?
-- TODO: Define the decay curve — linear? logarithmic? Should there be a ceiling so items don't dominate just from age?
+### API
+
+```js
+const queue = buildSessionQueue(knapsackResult.selected);
+// Items are sorted by descending value — highest priority first
+
+queue.peek(); // → current item (or null if empty)
+queue.dequeue(); // → remove and return front item (Done)
+queue.skip(); // → move front item to back (Skip — stays in session)
+queue.size; // → number of items remaining
+queue.isEmpty; // → true when session is complete
+queue.toArray(); // → snapshot of remaining items (for "1 of N" display)
+```
+
+### Session flow from the user's perspective
+
+```plaintext
+Session starts → show queue.peek() as the current item
+  Done  → queue.dequeue(), markCompleted(id) in storage, show next peek()
+  Skip  → queue.skip(), show next peek()
+  (item cycles back and will appear again)
+Session ends when queue.isEmpty is true → show completion state
+```
 
 ---
 
-## 5. Metadata Extraction
+## 5. Scoring / Value Function
+
+Each item's priority score is computed by `utils/scoring.js` and attached as `.value` before being passed to the knapsack.
+
+### Inputs to the score
+
+<!--prettier-ignore-->
+| Factor | Source | Notes |
+| --- | --- | --- |
+| `interest` | User-assigned (1–5) | Normalized to [0, 1] as `(rating - 1) / 4` |
+| `recency` | Derived from `addedAt` | 1.0 today → 0.0 at 30 days (linear decay) |
+| `staleness` | Derived from `addedAt` | Inverse of recency — items sitting longest get the boost; ceiling 30 days |
+| `mood` match | User's current mood vs item's mood tag | Binary: 1.0 if match, 0 otherwise |
+
+Each factor is normalized to [0, 1] before weighting so no factor can dominate by scale. Final score: `round(weighted_sum × 100)` → integer in [0, 100].
+
+### Default weights
+
+```js
+export const DEFAULT_WEIGHTS = {
+  interest: 0.5,
+  recency: 0.2,
+  staleness: 0.2,
+  moodMatch: 0.1,
+};
+```
+
+### Important: recency/staleness symmetry
+
+Under equal weights, recency and staleness cancel each other out algebraically — the combined contribution is `0.2 × (1 - f) + 0.2 × f = 0.2` regardless of item age. To differentiate items by age, the weights must be asymmetric. This is a known open question for the options page.
+
+### Open Questions
+
+- TODO: Should weights be user-configurable in the options page, or keep defaults and expose a single "prefer newer ↔ clear backlog" slider?
+- TODO: Decay curve is currently linear. Logarithmic decay would age items more gently — worth experimenting with once hallway testing produces feedback.
+
+---
+
+## 6. Metadata Extraction
 
 The content script (`content/content.js`) runs on the active tab when the user opens the popup and clicks "Add this page." It attempts to read metadata from the page's HTML before asking the user to fill anything in manually.
 
-### What to Try to Extract
+### What to try to extract
 
-| Field                    | Where to look                                                            |
-| ------------------------ | ------------------------------------------------------------------------ |
-| Title                    | `og:title` → `<title>` tag                                               |
-| Description              | `og:description` → `meta[name=description]`                              |
-| Content type             | URL pattern (youtube.com → video), `og:type`                             |
-| Estimated time (video)   | YouTube DOM (`.ytp-time-duration`), `VideoObject` JSON-LD schema         |
+<!--prettier-ignore-->
+| Field | Where to look |
+| --- | --- |
+| Title | `og:title` → `<title>` tag |
+| Description | `og:description` → `meta[name=description]` |
+| Content type | URL pattern (youtube.com → video), `og:type` |
+| Estimated time (video) | YouTube DOM (`.ytp-time-duration`), `VideoObject` JSON-LD schema |
 | Estimated time (article) | `twitter:data1` (Medium uses this), word count of `<article>` ÷ ~200 wpm |
-| Topic hints              | `article:tag`, `keywords` meta, or `og:section`                          |
+| Topic hints | `article:tag`, `keywords` meta, or `og:section` |
 
 ### Approach
 
@@ -185,21 +274,38 @@ The content script (`content/content.js`) runs on the active tab when the user o
 
 ---
 
-## 6. Storage
+## 7. Storage
 
 All data lives on the user's machine. No backend, no accounts.
 
-### Strategy
+### Implementation
 
-- Start with `localStorage` for simplicity (synchronous, easy to debug)
-- Migrate to `IndexedDB` if the item list grows large or if we need indexed queries
-- All storage access goes through `utils/storage.js` so the rest of the app doesn't care which one is in use
+`utils/storage.js` is a thin wrapper around `localStorage`. Nothing else in the app touches localStorage directly — all reads and writes go through this module. If we migrate to IndexedDB later, it is a single-file change.
 
-### Schema (localStorage version)
+### Schema
 
 ```plaintext
 "dequeue_items"    → JSON array of Item objects
-"dequeue_settings" → JSON object of user preferences
+"dequeue_settings" → JSON object of user preferences (see Settings typedef above)
+```
+
+### Public API
+
+```js
+// Items
+getItems()              // → Item[]  (never throws; returns [] on error)
+getPendingItems()       // → Item[]  (completed items excluded — use this for the knapsack)
+saveItem(item)          // append
+updateItem(item)        // replace by id (no-op if not found)
+deleteItem(id)          // remove by id (no-op if not found)
+markCompleted(id, ts?)  // set completed=true, completedAt=ts (defaults to Date.now())
+
+// Settings
+getSettings()           // → Settings (merged with defaults; never throws)
+saveSettings(patch)     // merge patch into existing settings
+
+// Utility
+clearAll()              // removes dequeue_items and dequeue_settings only
 ```
 
 ### Open Questions
@@ -209,7 +315,7 @@ All data lives on the user's machine. No backend, no accounts.
 
 ---
 
-## 7. UI / UX
+## 8. UI / UX
 
 ### Popup (main interface)
 
@@ -219,20 +325,33 @@ The popup is the primary surface — it opens when the user clicks the extension
 
 1. **Queue view** — scrollable list of all pending items, with sort/filter controls
 2. **Add item view** — form pre-filled with page metadata, user reviews and confirms
-3. **Session view** — generated session result after running the knapsack
+3. **Session view** — one item at a time, driven by `SessionQueue`; shows current item with Done and Skip buttons, plus a "N remaining" counter
 
 **Controls:**
 
 - Time budget input (in minutes) + "Generate Session" button
 - Filter by topic, mood, content type
 - Sort by recency, interest, staleness
-- Mark item as done (triggers points)
+- Done / Skip in session view
+- Points counter in header (increments on Done)
+
+### Session view detail
+
+The session view shows one item at a time (not a full list) to reduce choice paralysis. The user sees:
+
+- Item title and URL
+- Estimated time
+- "1 of N" progress indicator (from `queue.toArray().length`)
+- **Done** — marks completed, advances queue
+- **Skip** — moves to back of queue, advances to next item
 
 ### Options Page
 
 Accessible from the browser's extension settings. Lower-traffic controls:
 
 - Value function weight sliders (if we expose them)
+- Default budget setting
+- Default mood picker
 - Points/gamification settings
 - Data export/import
 
@@ -244,51 +363,46 @@ Accessible from the browser's extension settings. Lower-traffic controls:
 
 ---
 
-## 8. Testing Plan
+## 9. Testing Plan
 
-### Algorithmic Correctness
+### Current test suite (86 tests, all passing)
 
-- **Known small sets** — hand-compute the optimal selection, verify the DP matches
-- **Brute-force comparison** — for inputs ≤15 items, assert DP result equals exhaustive search
-- **Edge cases:**
-  - Empty item list
-  - Single item (fits / doesn't fit)
-  - Budget of zero
-  - All items exceed budget
-  - All items have identical value scores
-  - Duplicate time estimates
+<!--prettier-ignore-->
+| File | Tests | What it covers |
+| --- | --- | --- |
+| `core/knapsack.test.js` | 17 | DP vs. brute-force agreement, edge cases, known optimal solutions |
+| `utils/scoring.test.js` | 17 | Each factor in isolation, output range, weight system, `scoreItems` immutability |
+| `utils/storage.test.js` | 29 | All CRUD operations, settings merge, corrupt-data resilience, `clearAll` scoping |
+| `core/queue.test.js` | 23 | `peek`/`dequeue`/`skip`/`toArray`, skip cycling, `buildSessionQueue` sort order |
 
-### Stress Testing
+### Remaining test work
 
-- 50–100 items, various budgets — verify DP table performance is acceptable
-- Verify the DP table doesn't blow up memory on large budgets (e.g. 480 minutes)
-
-### UI / Integration
-
-- Adding an item persists across popup close/reopen
-- Completed items don't appear in future sessions
-- Filtering narrows the candidate set before the knapsack runs
-- Points counter increments correctly on completion
+- **Stress test:** 50–100 items at various budgets — verify DP performance is acceptable and memory is reasonable
+- **Integration:** scoring → knapsack → queue pipeline end-to-end
+- **UI / popup:** adding an item persists across close/reopen; completed items excluded from future sessions; points counter increments
 
 ### Hallway Testing
 
 - External tester (non-technical user) for general usability
-- Domain expert feedback on ADHD-appropriateness of the UX
+- Domain expert (wife, ADHD psychology background) for ADHD-appropriateness of the UX
 
 ---
 
-## 9. Open Questions & Decisions Log
+## 10. Open Questions & Decisions Log
 
-A running list of unresolved decisions. Move entries out of here and into the relevant section once decided.
-
-| #   | Question                                                          | Status |
-| --- | ----------------------------------------------------------------- | ------ |
-| 1   | Safari support — P2 stretch or cut entirely?                      | Open   |
-| 2   | Single topic tag vs. array of tags                                | Open   |
-| 3   | Value function weights — hardcoded defaults or user-configurable? | Open   |
-| 4   | Decay curve shape (linear vs. logarithmic)                        | Open   |
-| 5   | Max supported time budget (caps DP table size)                    | Open   |
-| 6   | localStorage vs. IndexedDB to start                               | Open   |
-| 7   | Export/import of item data                                        | Open   |
-| 8   | YouTube-specific scraper — worth maintaining?                     | Open   |
-| 9   | Gamification — points counter only, or visual feedback too?       | Open   |
+<!--prettier-ignore-->
+| # | Question | Status |
+| --- | --- | --- |
+| 1 | Safari support — P2 stretch or cut entirely? | Open |
+| 2 | Single topic tag vs. array of tags | Open |
+| 3 | Value function weights — hardcoded defaults or user-configurable? | Open |
+| 4 | Decay curve shape (linear vs. logarithmic) | Open |
+| 5 | Max supported time budget | **Decided: 60 minutes** |
+| 6 | localStorage vs. IndexedDB to start | **Decided: localStorage** |
+| 7 | Export/import of item data | Open (P2) |
+| 8 | YouTube-specific scraper — worth maintaining? | Open |
+| 9 | Gamification — points counter only, or visual feedback too? | Open |
+| 10 | Recency vs. staleness weight asymmetry — which direction should the default favor? | Open |
+| 11 | DP table approach — 1D rolling array vs. 2D | **Decided: 2D** (backtracking requires full row history) |
+| 12 | Session presentation — one at a time vs. full list | **Decided: one at a time** (reduces choice paralysis) |
+| 13 | Skip behavior — discard or cycle to back? | **Decided: cycle to back** (item stays available this session) |
