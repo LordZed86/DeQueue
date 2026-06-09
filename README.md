@@ -1,5 +1,11 @@
 # DeQueue
 
+![Tests](https://github.com/LordZed86/CS_398_Final-Project/actions/workflows/test.yml/badge.svg)
+![License](https://img.shields.io/badge/license-TBD-lightgrey)
+![JavaScript](https://img.shields.io/badge/JavaScript-ES2022-yellow?logo=javascript)
+![Manifest V3](https://img.shields.io/badge/WebExtensions-MV3-brightgreen?logo=googlechrome)
+![Tests](https://img.shields.io/badge/tests-123%20passing-brightgreen)
+
 A browser extension that helps people with ADHD manage content backlogs. You set a time budget, DeQueue uses a 0/1 knapsack algorithm to pick the highest-priority items that fit, and presents them one at a time so there's no choice paralysis.
 
 Built for CS 398 — Algorithmic Problem Solving.
