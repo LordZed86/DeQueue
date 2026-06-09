@@ -95,6 +95,30 @@ Running list of things worth thinking about for the final reflection paper and p
 - jsdom is a headless DOM implementation that provides a real `localStorage`. Using it means the tests exercise the actual API rather than a mock that might behave differently.
 - The docblock is per-file, so only `storage.test.js` pays the jsdom startup cost. The algorithm and scoring tests continue running in fast Node mode.
 
+### Why does the popup route `GET_PAGE_META` through the background worker instead of messaging the content script directly?
+
+- Manifest V3 removed the ability for popups to message content scripts directly. In MV3, cross-context messaging must go through the background service worker.
+- This is an architectural constraint of the platform, not a design choice. The background worker is the required intermediary.
+- The key implementation detail: the `onMessage` listener must `return true` when calling `sendResponse` asynchronously. Without it, the message channel closes before the response arrives — a silent failure that's very hard to debug.
+
+### Why are `background.js` and `popup.js` not unit tested?
+
+- `background.js` is pure Chrome API wiring with no logic. Testing it means mocking `chrome.tabs.query` and asserting you called the mock — that's testing that you wrote the code you wrote, not that it's correct. Real bugs only surface in a running extension.
+- `popup.js` is DOM manipulation glue over modules that are already thoroughly tested. The value of a unit test here is low; the maintenance cost (tests break on every HTML change) is high. Meaningful coverage requires either browser automation or a component framework with stable test seams.
+- Both are covered by the planned integration/hallway tests.
+
+### Why does `content.js` guard the `chrome.runtime` listener?
+
+- Without the guard (`if (typeof chrome !== "undefined" && chrome.runtime?.onMessage)`), importing the module in Node/jsdom throws immediately — `chrome` doesn't exist outside a browser extension context.
+- Guarding it makes the module safely importable in tests. The listener only runs when a real extension runtime is present.
+- This is the same pattern used in any isomorphic code that needs to behave differently in server vs. browser environments.
+
+### Why export the content script's extractor functions?
+
+- The message listener is just an entry point — it calls `extractPageMeta()`, which calls individual extractors. The logic is in those functions.
+- Exporting them allows unit testing each extractor in isolation: set up a specific DOM state, call the function, assert the result. Without exports, the only way to test would be to simulate the full message passing flow.
+- It also makes the extraction logic reusable if we ever add an options page that wants to preview what would be scraped from the current page.
+
 ---
 
 ## Honest reflection prompts
@@ -130,6 +154,18 @@ These are questions worth answering honestly in the reflection paper.
 - The test for `markCompleted`'s default timestamp uses a before/after bracket rather than mocking `Date.now`. What's the tradeoff between the two approaches?
 - If the queue grew to 500 items, localStorage would start to feel it (~5MB cap). What would the migration to IndexedDB actually look like? What would have to change outside of `storage.js`?
 
+### About the content script
+
+- The content script has to work on any page — a news article, a YouTube video, a Reddit thread. How did you decide which metadata sources to try, and in what order?
+- The word count ÷ 200 wpm estimate is rough. What would you need to know about a page to do better? Is it worth it?
+- `innerText` isn't available in jsdom, so the tests use `textContent` as a fallback. In a real browser these behave differently — `innerText` respects CSS visibility, `textContent` doesn't. Does that matter for DeQueue's use case?
+- The hostname-based content type detection (youtube.com → video) can't be tested in jsdom because `window.location` is read-only. How would you test it if you needed to? Is "correct by inspection" a defensible position?
+
+### About MV3 and the background worker
+
+- MV3 blocks direct popup → content script messaging. Did you know this before you hit it, or did it surface as a bug? What does that say about how well you understand the platform you're building on?
+- `return true` in the `onMessage` listener is a well-known MV3 gotcha. How did you catch it? Would a test have caught it?
+
 ### About what you'd do differently
 
 - Would you keep the 2D DP table, or switch to 1D now that you understand it better?
@@ -148,16 +184,25 @@ These are questions worth answering honestly in the reflection paper.
 - "How does the scoring function prevent a single factor from dominating?" — Normalization to [0,1] before weighting. All factors on the same scale.
 - "How did you verify correctness?" — Brute-force comparison on small inputs (≤15 items, all 2^n subsets), plus hand-verified known cases, plus edge case tests.
 - "Why did you choose these specific scoring factors?" — Design decision based on what signals an ADHD user would actually have access to and care about: their own interest rating, how fresh the content is, how long it's been waiting, and how it matches their current energy.
-- "What would you add if you had more time?" — P1 features: sort/filter UI, mark-as-done + points counter. P2 stretch: auto-fetch from reading lists, calendar integration, topic clustering (graph theory).
+- "What would you add if you had more time?" — P1 features: sort/filter UI, options page (weight sliders, default budget). P2 stretch: auto-fetch from reading lists, calendar integration, topic clustering (graph theory).
 - "Why did you add a queue if the knapsack already gives you a list?" — The knapsack answers _which_ items to include. The queue answers _how to present them_ — one at a time, in priority order, with a skip-without-losing mechanic. They solve different problems. The queue is also a direct nod to the app name.
 - "Why localStorage and not IndexedDB?" — localStorage is synchronous, requires no async handling, and is simple to debug. For a personal tool with a modest item count, it's plenty. All access is behind `storage.js`, so migrating later is a single-file change with no impact on the rest of the app.
 - "What happens if `localStorage` is full or unavailable?" — `getItems()` and `getSettings()` catch exceptions and return safe defaults. `saveItem` would throw silently in its current form — that's a known gap that could be addressed with a try/catch and a user-facing error message.
 
+### New defense questions from today's work
+
+- "Why does the popup have to go through the background worker to talk to the content script?" — MV3 architectural constraint. The popup context and content script context are isolated; the service worker is the only allowed bridge.
+- "How does the content script know what kind of page it's on?" — Hostname regex for known video sites (YouTube, Vimeo), then `og:type` meta tag. Falls back to "article" as a safe default.
+- "How does the content script estimate reading time?" — Two strategies: `twitter:data1` meta (used by Medium), and word count of the `<article>` element divided by ~200 wpm. Both are pre-filled and editable before saving.
+- "Why aren't `background.js` and `popup.js` unit tested?" — See the testing rationale in `reflection_notes.md` and `dev_log.md`. The short answer: no logic to test in background.js; DOM glue over tested modules in popup.js.
+- "Your content script tests use `og:type` to trigger the video path but your code also checks the hostname. How do you know the hostname branch is correct?" — Correct by inspection: it's three lines of regex with no branching. The `og:type` tests cover the same downstream behavior.
+
 ### Demo preparation
 
 - Have a working session generation ready to show: add 5–10 items manually, set a 20-minute budget, generate a session.
-- Be ready to show the test suite running and passing.
+- Be ready to show the test suite running and passing (123 tests, 5 files).
 - Be ready to open the DP table in the browser console and show what it looks like for a small input (could add a debug export for this).
+- Load the unpacked extension in Chrome or Firefox and demonstrate the add-item flow with metadata pre-fill on a real page.
 
 ---
 

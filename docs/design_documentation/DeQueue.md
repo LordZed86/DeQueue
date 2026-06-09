@@ -2,7 +2,7 @@
 
 **Author:** Kellen Jones
 **Course:** CS 398 — Algorithmic Problem Solving
-**Last Updated:** 2026-06-03
+**Last Updated:** 2026-06-09
 
 ---
 
@@ -46,7 +46,8 @@ src/
 
 ```plaintext
 User clicks extension icon on a webpage
-  → popup.js sends a message to content.js asking for page metadata
+  → popup.js sends GET_PAGE_META to background.js (MV3 requires this relay)
+  → background.js forwards the message to content.js on the active tab
   → content.js scrapes the page and returns { title, url, description, estimatedTime, ... }
   → popup.js pre-fills the "Add Item" form with that metadata
   → User reviews/edits and confirms
@@ -355,17 +356,21 @@ Accessible from the browser's extension settings. Lower-traffic controls:
 - Points/gamification settings
 - Data export/import
 
+### Decisions made during implementation
+
+- **Single view at a time with a back button** — no persistent nav. Keeps the popup minimal and focused.
+- **Points counter in the header** — always visible, updates immediately on Done.
+- **Gamification: points counter only for now** — 10 pts per completed item. Session complete screen shows points earned that session. No visual animations yet (P1).
+
 ### Open Questions
 
-- TODO: Should the popup have a persistent nav or just one view at a time with a back button?
-- TODO: Where does the points counter live — always visible in the popup header?
-- TODO: How minimal is "minimal gamification"? Just a number for now, or do we want any visual feedback on completion?
+- TODO: How minimal is "minimal gamification"? Any visual feedback on completion beyond the count?
 
 ---
 
 ## 9. Testing Plan
 
-### Current test suite (86 tests, all passing)
+### Current test suite (123 tests, all passing)
 
 <!--prettier-ignore-->
 | File | Tests | What it covers |
@@ -374,12 +379,18 @@ Accessible from the browser's extension settings. Lower-traffic controls:
 | `utils/scoring.test.js` | 17 | Each factor in isolation, output range, weight system, `scoreItems` immutability |
 | `utils/storage.test.js` | 29 | All CRUD operations, settings merge, corrupt-data resilience, `clearAll` scoping |
 | `core/queue.test.js` | 23 | `peek`/`dequeue`/`skip`/`toArray`, skip cycling, `buildSessionQueue` sort order |
+| `content/content.test.js` | 37 | Metadata extraction (title, description, type, duration, topic), duration parsers |
+
+### Not unit tested (and why)
+
+- **`background.js`** — pure Chrome API wiring with no logic of its own. Testing it would mean mocking `chrome.tabs.query` and asserting that we called the mock — not a meaningful correctness check.
+- **`popup.js`** — DOM manipulation glue over already-tested modules. Meaningful coverage requires a real extension runtime or a component framework with stable seams. Flagged for integration testing.
 
 ### Remaining test work
 
 - **Stress test:** 50–100 items at various budgets — verify DP performance is acceptable and memory is reasonable
 - **Integration:** scoring → knapsack → queue pipeline end-to-end
-- **UI / popup:** adding an item persists across close/reopen; completed items excluded from future sessions; points counter increments
+- **UI / popup:** adding an item persists across close/reopen; completed items excluded from future sessions; points counter increments (requires browser automation or hallway testing)
 
 ### Hallway Testing
 
@@ -393,7 +404,7 @@ Accessible from the browser's extension settings. Lower-traffic controls:
 <!--prettier-ignore-->
 | # | Question | Status |
 | --- | --- | --- |
-| 1 | Safari support — P2 stretch or cut entirely? | Open |
+| 1 | Safari support — P2 stretch or cut entirely? | **Decided: P2 stretch** |
 | 2 | Single topic tag vs. array of tags | Open |
 | 3 | Value function weights — hardcoded defaults or user-configurable? | Open |
 | 4 | Decay curve shape (linear vs. logarithmic) | Open |
@@ -401,7 +412,7 @@ Accessible from the browser's extension settings. Lower-traffic controls:
 | 6 | localStorage vs. IndexedDB to start | **Decided: localStorage** |
 | 7 | Export/import of item data | Open (P2) |
 | 8 | YouTube-specific scraper — worth maintaining? | Open |
-| 9 | Gamification — points counter only, or visual feedback too? | Open |
+| 9 | Gamification — points counter only, or visual feedback too? | **Decided: counter only for P0** (10 pts/item, shown in header and session complete screen) |
 | 10 | Recency vs. staleness weight asymmetry — which direction should the default favor? | Open |
 | 11 | DP table approach — 1D rolling array vs. 2D | **Decided: 2D** (backtracking requires full row history) |
 | 12 | Session presentation — one at a time vs. full list | **Decided: one at a time** (reduces choice paralysis) |
@@ -411,24 +422,23 @@ Accessible from the browser's extension settings. Lower-traffic controls:
 
 P0 (MVP — required to have a working app)
 
-- [ ] manifest.json — the extension config; nothing loads without it
-- [ ] src/popup/popup.html + popup.js + popup.css — the main UI (3 views: queue list, add item form, session view)
-- [ ] src/content/content.js — content script that scrapes page metadata to pre-fill the add form
-- [ ] src/background/background.js — service worker for storage/messaging between popup and content script
+- [x] manifest.json — the extension config
+- [x] src/popup/popup.html + popup.js + popup.css — the main UI (3 views: queue list, add item form, session view)
+- [x] src/content/content.js — content script that scrapes page metadata to pre-fill the add form
+- [x] src/background/background.js — service worker for messaging between popup and content script
 - [ ] src/assets/icons/ — extension icons (16, 48, 128px)
 
-P0 Tests (per your design doc)
+P0 Tests
 
 - [ ] Stress test: 50–100 items at various budgets
-- [ ] Integration test: scoring → knapsack → queue end-to-end
-- [ ] UI/popup tests: add item persists, completed items excluded, points counter increments
+- [ ] Integration test: scoring → knapsack → queue pipeline end-to-end
+- [ ] UI/popup: add item persists, completed items excluded, points counter increments
 
 P1 (post-MVP polish)
 
 - [ ] src/options/ — options page (weight sliders, default budget, mood picker)
 - [ ] Sorting/filtering UI (by topic, recency, mood)
-- [ ] Points counter / basic gamification
-- [ ] Mark-as-done with points increment
+- [ ] Hallway testing (general usability + ADHD-appropriateness)
 
 P2 (stretch)
 

@@ -14,12 +14,12 @@
 
 ---
 
-## What We Built (P0 — Core)
+## What is Built (P0 — Core)
 
 ### Algorithm (`src/core/knapsack.js`)
 
 - 0/1 knapsack via bottom-up dynamic programming
-- 2D table `dp[i][w]` — keeps full row history so we can backtrack and recover *which* items were selected, not just the best total value
+- 2D table `dp[i][w]` — keeps full row history so we can backtrack and recover _which_ items were selected, not just the best total value
 - Backtracking walks from `dp[n][budget]` upward: if a row's value changed, that item was included
 - Budget capped at 60 minutes — matches the real use case (gap-filling, not day-planning)
 - Items with weight 0 or over the cap are filtered before the table is built
@@ -70,23 +70,46 @@
 - Storage tests use jsdom environment (real `localStorage`, not a mock)
 - `beforeEach(() => clearAll())` keeps storage tests independent
 
+### Extension Shell (`manifest.json`, `vite.config.js`, `background.js`, `popup.html/js/css`)
+
+- Manifest V3, targeting Firefox and Chrome/Brave
+- Minimum permissions: `storage`, `activeTab`, `scripting`
+- MV3 constraint discovered: popup cannot message content scripts directly — all cross-context messaging goes through the background service worker
+- Background worker is intentionally thin — only responsibility is relaying `GET_PAGE_META` between popup and content script
+- Popup has three views (queue list, add item, session) — only one visible at a time, back button nav
+- Points stored separately from item data (UI concern, not data model)
+- 10 pts per completed item; session complete screen shows session earnings
+
+### Content Script (`content/content.js`, `content/content.test.js`)
+
+- Scrapes active page on demand (triggered by popup "Add item" click)
+- Extraction priority per field: `og:*` → `twitter:*` → DOM fallback → null
+- Video duration: YouTube DOM (`.ytp-time-duration`) → `VideoObject` JSON-LD `PT4M32S` format
+- Read time: `twitter:data1` (Medium) → `<article>` word count ÷ 200 wpm → `<main>` word count
+- Every extractor returns null on failure — never blocks manual entry
+- 37 new tests; jsdom limitation discovered: `window.location` is read-only, hostname-based detection tested via `og:type` instead
+- 123 tests total across 5 files, all passing
+
 ---
 
 ## Ideas for Future Development
 
 ### P1 — Next priorities (core UX)
 
-- **Queue view UI** — scrollable list of all pending items in the popup; sort by recency, interest, or staleness; filter by topic, mood, or content type
-- **Add item form** — manual entry with fields for URL, title, time estimate, topic, interest rating, mood tag; pre-filled from page metadata when available
-- **Session view** — show the knapsack output as a clean list with titles, time estimates, and links; subtotal the minutes used vs. budget
-- **Mark as done** — checkbox or swipe on each item; triggers `markCompleted()` in storage; item disappears from future sessions
-- **Points counter** — simple integer that increments on completion; displayed in the popup header
-- **Manifest + popup wiring** — `manifest.json` to declare the extension, `popup.html/js/css` to tie everything together
+- ~~**Queue view UI**~~ ✓ shipped
+- ~~**Add item form**~~ ✓ shipped — pre-filled from content script
+- ~~**Session view**~~ ✓ shipped — one item at a time, Done/Skip, "N remaining", session complete screen
+- ~~**Mark as done**~~ ✓ shipped
+- ~~**Points counter**~~ ✓ shipped — 10 pts/item, header + session complete screen
+- ~~**Manifest + popup wiring**~~ ✓ shipped
+- ~~**Content script metadata scraping**~~ ✓ shipped
+- **Sorting/filtering UI** — sort/filter controls are in the popup HTML but not wired up yet
+- **Options page** — weight sliders, default budget, default mood picker
+- **Extension icons** — 16, 48, 128px assets still missing
 
 ### P2 — Enhancements (after core works)
 
-- **Content script metadata scraping** — inject into the active tab to pull title, URL, `og:description`, estimated read time (word count ÷ 200 wpm), and content type (YouTube URL → video)
-- **YouTube duration scraping** — read `.ytp-time-duration` from the player DOM to auto-fill time estimate for videos; fragile but useful
+- **YouTube duration scraping** — implemented as best-effort; falls back to manual if YouTube's DOM changes
 - **Options page** — weight sliders for the scoring function; default budget setting; default mood picker; data export/import
 - **Expose scoring weights as user settings** — let power users tune interest vs. staleness vs. recency to match their own patterns
 - **JSON export/import** — backup the queue as a file; restore on a new browser or after a reset
@@ -109,10 +132,17 @@
 ## Open Design Questions (still unresolved)
 
 - Single topic tag vs. array of tags — array is more flexible but complicates filter UI
-- Should scoring weights be user-configurable from the start, or hardcode defaults until P2?
+- Should scoring weights be user-configurable from the start, or hardcode defaults until options page?
 - What's the right staleness ceiling — 30 days? 14? Should it be user-adjustable?
 - Recency vs. staleness weight asymmetry — which direction should the default favor?
-- Popup nav — persistent bottom nav bar, or one view at a time with a back button?
-- Points counter — just a number, or some kind of visual reward on completion?
 - YouTube scraper — worth maintaining given how often YouTube's DOM changes?
 - Export/import format — plain JSON, or something compatible with Pocket/Instapaper?
+
+## Resolved Design Questions
+
+- ~~Popup nav — persistent bottom nav or back button?~~ → **Back button, one view at a time**
+- ~~Points counter — just a number or visual reward?~~ → **Number only for P0** (header + session complete screen); visual feedback is P1/P2
+- ~~localStorage vs. IndexedDB?~~ → **localStorage** for now; all access behind `storage.js` so migration is a single-file change
+- ~~Max budget?~~ → **60 minutes** — gap-filling use case, not day-planning
+- ~~1D vs. 2D DP table?~~ → **2D** — backtracking requires full row history
+- ~~Skip behavior — discard or cycle?~~ → **Cycle to back** — item stays available this session
