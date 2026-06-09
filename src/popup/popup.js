@@ -175,17 +175,14 @@ function resetAddForm() {
   addError.classList.add("hidden");
   addError.textContent = "";
 
-  // Ask the content script for page metadata if we can
-  chrome.tabs?.query({ active: true, currentWindow: true }, (tabs) => {
-    const tabId = tabs?.[0]?.id;
-    if (!tabId) return;
-    chrome.tabs.sendMessage(tabId, { type: "GET_PAGE_META" }, (meta) => {
-      if (chrome.runtime.lastError || !meta) return;
-      if (meta.url) document.getElementById("input-url").value = meta.url;
-      if (meta.title) document.getElementById("input-title").value = meta.title;
-      if (meta.timeEstimate) document.getElementById("input-time").value = meta.timeEstimate;
-      if (meta.contentType) document.getElementById("input-content-type").value = meta.contentType;
-    });
+  // Ask the background worker to relay page metadata from the content script.
+  // In MV3 the popup cannot message content scripts directly.
+  chrome.runtime?.sendMessage({ type: "GET_PAGE_META" }, (meta) => {
+    if (chrome.runtime.lastError || !meta) return;
+    if (meta.url) document.getElementById("input-url").value = meta.url;
+    if (meta.title) document.getElementById("input-title").value = meta.title;
+    if (meta.timeEstimate) document.getElementById("input-time").value = meta.timeEstimate;
+    if (meta.contentType) document.getElementById("input-content-type").value = meta.contentType;
   });
 }
 
