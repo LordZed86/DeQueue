@@ -406,3 +406,30 @@ Accessible from the browser's extension settings. Lower-traffic controls:
 | 11 | DP table approach — 1D rolling array vs. 2D | **Decided: 2D** (backtracking requires full row history) |
 | 12 | Session presentation — one at a time vs. full list | **Decided: one at a time** (reduces choice paralysis) |
 | 13 | Skip behavior — discard or cycle to back? | **Decided: cycle to back** (item stays available this session) |
+
+## TODO Checklist
+
+P0 (MVP — required to have a working app)
+
+- [ ] manifest.json — the extension config; nothing loads without it
+- [ ] src/popup/popup.html + popup.js + popup.css — the main UI (3 views: queue list, add item form, session view)
+- [ ] src/content/content.js — content script that scrapes page metadata to pre-fill the add form
+- [ ] src/background/background.js — service worker for storage/messaging between popup and content script
+- [ ] src/assets/icons/ — extension icons (16, 48, 128px)
+
+P0 Tests (per your design doc)
+
+- [ ] Stress test: 50–100 items at various budgets
+- [ ] Integration test: scoring → knapsack → queue end-to-end
+- [ ] UI/popup tests: add item persists, completed items excluded, points counter increments
+
+P1 (post-MVP polish)
+
+- [ ] src/options/ — options page (weight sliders, default budget, mood picker)
+- [ ] Sorting/filtering UI (by topic, recency, mood)
+- [ ] Points counter / basic gamification
+- [ ] Mark-as-done with points increment
+
+P2 (stretch)
+
+- [ ] Auto-fill from reading lists/YouTube, calendar integration, topic clustering, algorithm visualizer, stats

@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DeQueue</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <!-- ── Header ─────────────────────────────────────────── -->
+    <header>
+      <span class="logo">DeQueue</span>
+      <span class="points" id="points-display">0 pts</span>
+    </header>
+
+    <!-- ── Queue View ─────────────────────────────────────── -->
+    <section id="view-queue" class="view">
+      <div class="session-controls">
+        <label for="budget-input">Time budget</label>
+        <div class="budget-row">
+          <input
+            id="budget-input"
+            type="number"
+            min="1"
+            max="60"
+            value="20"
+          />
+          <span class="unit">min</span>
+          <label for="mood-select" class="sr-only">Mood</label>
+          <select id="mood-select">
+            <option value="">Any mood</option>
+            <option value="focus">Focus</option>
+            <option value="low-energy">Low energy</option>
+            <option value="curious">Curious</option>
+            <option value="fun">Fun</option>
+          </select>
+        </div>
+        <button id="btn-generate" class="btn-primary">Generate Session</button>
+      </div>
+
+      <div class="queue-header">
+        <span id="item-count">0 items</span>
+        <button id="btn-add-item" class="btn-ghost">+ Add item</button>
+      </div>
+
+      <ul id="item-list" class="item-list">
+        <!-- populated by popup.js -->
+      </ul>
+
+      <p id="empty-state" class="empty-state hidden">
+        No items yet. Add something to read!
+      </p>
+    </section>
+
+    <!-- ── Add Item View ───────────────────────────────────── -->
+    <section id="view-add" class="view hidden">
+      <div class="view-header">
+        <button id="btn-back-from-add" class="btn-back">←</button>
+        <h2>Add item</h2>
+      </div>
+
+      <form id="add-form">
+        <label for="input-url">URL</label>
+        <input id="input-url" type="url" placeholder="https://…" />
+
+        <label for="input-title">Title <span class="required">*</span></label>
+        <input id="input-title" type="text" placeholder="Article or video title" required />
+
+        <label for="input-time">Time estimate (min) <span class="required">*</span></label>
+        <input id="input-time" type="number" min="1" max="60" placeholder="10" required />
+
+        <label for="input-content-type">Type</label>
+        <select id="input-content-type">
+          <option value="article">Article</option>
+          <option value="video">Video</option>
+          <option value="other">Other</option>
+        </select>
+
+        <label for="input-topic">Topic</label>
+        <input id="input-topic" type="text" placeholder="e.g. research, fun, work" />
+
+        <label for="input-interest">Interest (1–5) <span class="required">*</span></label>
+        <div class="star-row" id="star-row" role="group" aria-label="Interest rating">
+          <button type="button" class="star" data-value="1" aria-label="1 star">★</button>
+          <button type="button" class="star" data-value="2" aria-label="2 stars">★</button>
+          <button type="button" class="star" data-value="3" aria-label="3 stars">★</button>
+          <button type="button" class="star" data-value="4" aria-label="4 stars">★</button>
+          <button type="button" class="star" data-value="5" aria-label="5 stars">★</button>
+        </div>
+        <input id="input-interest" type="hidden" value="3" />
+
+        <label for="input-mood">Mood tag</label>
+        <select id="input-mood">
+          <option value="">None</option>
+          <option value="focus">Focus</option>
+          <option value="low-energy">Low energy</option>
+          <option value="curious">Curious</option>
+          <option value="fun">Fun</option>
+        </select>
+
+        <p id="add-error" class="error hidden"></p>
+
+        <button type="submit" class="btn-primary">Save item</button>
+      </form>
+    </section>
+
+    <!-- ── Session View ────────────────────────────────────── -->
+    <section id="view-session" class="view hidden">
+      <div class="view-header">
+        <button id="btn-end-session" class="btn-back">← End session</button>
+        <span id="session-progress" class="progress-label">1 of 3</span>
+      </div>
+
+      <div id="session-card" class="session-card">
+        <p class="card-type" id="card-type"></p>
+        <h2 class="card-title" id="card-title"></h2>
+        <a class="card-url" id="card-url" target="_blank" rel="noopener noreferrer"></a>
+        <div class="card-meta">
+          <span id="card-time"></span>
+          <span id="card-topic"></span>
+        </div>
+      </div>
+
+      <div id="session-complete" class="session-complete hidden">
+        <p class="complete-emoji">🎉</p>
+        <p class="complete-msg">Session complete!</p>
+        <p id="complete-points" class="complete-points"></p>
+        <button id="btn-session-done" class="btn-primary">Back to queue</button>
+      </div>
+
+      <div id="session-actions" class="session-actions">
+        <button id="btn-skip" class="btn-ghost">Skip →</button>
+        <button id="btn-done" class="btn-primary">Done ✓</button>
+      </div>
+    </section>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>
