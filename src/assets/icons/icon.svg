@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Background -->
+  <rect width="128" height="128" rx="24" fill="#1a1a2e"/>
+  <!-- D -->
+  <text
+    x="18"
+    y="90"
+    font-family="Arial Black, Arial, sans-serif"
+    font-weight="900"
+    font-size="80"
+    fill="#e94560"
+    letter-spacing="-4"
+  >DQ</text>
+  <!-- Underline accent bar -->
+  <rect x="18" y="100" width="92" height="6" rx="3" fill="#e94560" opacity="0.5"/>
+</svg>

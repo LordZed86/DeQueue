@@ -370,7 +370,7 @@ Accessible from the browser's extension settings. Lower-traffic controls:
 
 ## 9. Testing Plan
 
-### Current test suite (123 tests, all passing)
+### Current test suite (136 tests, all passing)
 
 <!--prettier-ignore-->
 | File | Tests | What it covers |
@@ -380,6 +380,7 @@ Accessible from the browser's extension settings. Lower-traffic controls:
 | `utils/storage.test.js` | 29 | All CRUD operations, settings merge, corrupt-data resilience, `clearAll` scoping |
 | `core/queue.test.js` | 23 | `peek`/`dequeue`/`skip`/`toArray`, skip cycling, `buildSessionQueue` sort order |
 | `content/content.test.js` | 37 | Metadata extraction (title, description, type, duration, topic), duration parsers |
+| `core/pipeline.test.js` | 13 | Full pipeline integration (scoreItems → knapsack → queue), stress tests 50–100 items |
 
 ### Not unit tested (and why)
 
@@ -388,9 +389,9 @@ Accessible from the browser's extension settings. Lower-traffic controls:
 
 ### Remaining test work
 
-- **Stress test:** 50–100 items at various budgets — verify DP performance is acceptable and memory is reasonable
-- **Integration:** scoring → knapsack → queue pipeline end-to-end
-- **UI / popup:** adding an item persists across close/reopen; completed items excluded from future sessions; points counter increments (requires browser automation or hallway testing)
+- ~~**Stress test:** 50–100 items at various budgets~~ ✓ done — `core/pipeline.test.js`; 100 items at max budget runs in <1ms
+- ~~**Integration:** scoring → knapsack → queue pipeline end-to-end~~ ✓ done — `core/pipeline.test.js`
+- **UI / popup:** adding an item persists across close/reopen; completed items excluded from future sessions; points counter increments (hallway testing)
 
 ### Hallway Testing
 
@@ -426,13 +427,13 @@ P0 (MVP — required to have a working app)
 - [x] src/popup/popup.html + popup.js + popup.css — the main UI (3 views: queue list, add item form, session view)
 - [x] src/content/content.js — content script that scrapes page metadata to pre-fill the add form
 - [x] src/background/background.js — service worker for messaging between popup and content script
-- [ ] src/assets/icons/ — extension icons (16, 48, 128px)
+- [x] src/assets/icons/ — SVG icon (placeholder; PNG exports pending)
 
 P0 Tests
 
-- [ ] Stress test: 50–100 items at various budgets
-- [ ] Integration test: scoring → knapsack → queue pipeline end-to-end
-- [ ] UI/popup: add item persists, completed items excluded, points counter increments
+- [x] Stress test: 50–100 items at various budgets (`core/pipeline.test.js`)
+- [x] Integration test: scoring → knapsack → queue pipeline end-to-end (`core/pipeline.test.js`)
+- [ ] UI/popup: add item persists, completed items excluded, points counter increments (hallway testing)
 
 P1 (post-MVP polish)
 

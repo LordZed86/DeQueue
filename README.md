@@ -4,7 +4,7 @@
 ![License](https://img.shields.io/badge/license-TBD-lightgrey)
 ![JavaScript](https://img.shields.io/badge/JavaScript-ES2022-yellow?logo=javascript)
 ![Manifest V3](https://img.shields.io/badge/WebExtensions-MV3-brightgreen?logo=googlechrome)
-![Tests](https://img.shields.io/badge/tests-123%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-136%20passing-brightgreen)
 
 A browser extension that helps people with ADHD manage content backlogs. You set a time budget, DeQueue uses a 0/1 knapsack algorithm to pick the highest-priority items that fit, and presents them one at a time so there's no choice paralysis.
 
@@ -101,7 +101,7 @@ npm run test:watch
 
 ## Tests
 
-123 tests across 5 files, all passing.
+136 tests across 6 files, all passing.
 
 | File                      | Tests | What it covers                                                                    |
 | ------------------------- | ----- | --------------------------------------------------------------------------------- |
@@ -110,6 +110,7 @@ npm run test:watch
 | `utils/storage.test.js`   | 29    | All CRUD operations, settings merge, corrupt-data resilience, clearAll scoping    |
 | `core/queue.test.js`      | 23    | peek/dequeue/skip/toArray, skip cycling, buildSessionQueue sort order             |
 | `content/content.test.js` | 37    | Metadata extraction (title, description, type, duration, topic), duration parsers |
+| `core/pipeline.test.js`   | 13    | Full pipeline integration, stress tests at 50–100 items, performance              |
 
 ---
 

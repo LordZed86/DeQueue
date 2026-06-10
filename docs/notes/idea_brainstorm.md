@@ -88,7 +88,7 @@
 - Read time: `twitter:data1` (Medium) → `<article>` word count ÷ 200 wpm → `<main>` word count
 - Every extractor returns null on failure — never blocks manual entry
 - 37 new tests; jsdom limitation discovered: `window.location` is read-only, hostname-based detection tested via `og:type` instead
-- 123 tests total across 5 files, all passing
+- 136 tests total across 6 files, all passing (includes pipeline integration + stress tests)
 
 ---
 
@@ -105,7 +105,7 @@
 - ~~**Content script metadata scraping**~~ ✓ shipped
 - **Sorting/filtering UI** — sort/filter controls are in the popup HTML but not wired up yet
 - **Options page** — weight sliders, default budget, default mood picker
-- **Extension icons** — 16, 48, 128px assets still missing
+- ~~**Extension icons**~~ ✓ SVG placeholder icon in place; PNG exports pending
 
 ### P2 — Enhancements (after core works)
 
