@@ -7,4 +7,5 @@ export default defineConfig({
       manifest: "src/manifest.json",
     }),
   ],
+  publicDir: "src/assets",
 });
