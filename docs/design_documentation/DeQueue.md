@@ -2,7 +2,7 @@
 
 **Author:** Kellen Jones
 **Course:** CS 398 — Algorithmic Problem Solving
-**Last Updated:** 2026-06-09
+**Last Updated:** 2026-06-10
 
 ---
 
@@ -62,9 +62,23 @@ User opens popup, sets a time budget
   → popup.js calls scoreItems(items, { currentMood }) from utils/scoring.js
   → popup.js calls knapsack(budget, scoredItems) from core/knapsack.js
   → popup.js calls buildSessionQueue(result.selected) from core/queue.js
+  → popup.js awaits saveSession() → writes queue snapshot to chrome.storage.session
   → popup.js renders the session view, showing queue.peek() as the current item
-  → User clicks Done → queue.dequeue(), markCompleted(id) in storage
-  → User clicks Skip → queue.skip() (item moves to back, stays in session)
+  → User clicks Done → queue.dequeue(), markCompleted(id) in storage, saveSession() updated
+  → User clicks Skip → queue.skip(), saveSession() updated (item moves to back, stays in session)
+  → User clicks End Session / all items done → clearSession() removes session from chrome.storage.session
+```
+
+### Data Flow (Restoring a Session After Popup Close)
+
+```plaintext
+User closes popup (e.g. clicks a link, opens a new tab)
+  → active session is already persisted in chrome.storage.session
+
+User reopens popup
+  → init calls loadSession() from utils/storage.js
+  → if a session exists: restores SessionQueue from saved item list, jumps straight to session view
+  → if no session: shows the queue view as normal
 ```
 
 ---
@@ -281,13 +295,25 @@ All data lives on the user's machine. No backend, no accounts.
 
 ### Implementation
 
-`utils/storage.js` is a thin wrapper around `localStorage`. Nothing else in the app touches localStorage directly — all reads and writes go through this module. If we migrate to IndexedDB later, it is a single-file change.
+`utils/storage.js` is a thin wrapper around two storage mechanisms:
+
+- **`localStorage`** — permanent item and settings data. Survives browser restarts. All item CRUD and settings go here.
+- **`chrome.storage.session`** — active session state only. Cleared automatically when the browser restarts, but survives popup close/reopen and tab switches within a browser session. This is the right lifecycle for "I'm in a session right now."
+
+Nothing else in the app touches either storage API directly — all reads and writes go through `storage.js`.
 
 ### Schema
 
 ```plaintext
-"dequeue_items"    → JSON array of Item objects
-"dequeue_settings" → JSON object of user preferences (see Settings typedef above)
+localStorage:
+  "dequeue_items"         → JSON array of Item objects
+  "dequeue_settings"      → JSON object of user preferences
+  "dequeue_points"        → integer (total points; UI-layer state, not in Item model)
+
+chrome.storage.session:
+  "dequeue_active_session" → { items: KnapsackItem[], pointsEarned: number }
+                             Present only while a session is active; removed on End Session
+                             or when all items are completed.
 ```
 
 ### Public API
@@ -305,9 +331,18 @@ markCompleted(id, ts?)  // set completed=true, completedAt=ts (defaults to Date.
 getSettings()           // → Settings (merged with defaults; never throws)
 saveSettings(patch)     // merge patch into existing settings
 
+// Session persistence
+saveSession(session)    // → Promise<void>  write active session to chrome.storage.session
+loadSession()           // → Promise<ActiveSession | null>  restore on popup open
+clearSession()          // → Promise<void>  remove on End Session or session complete
+
 // Utility
 clearAll()              // removes dequeue_items and dequeue_settings only
 ```
+
+### Why not localStorage for session state?
+
+`localStorage` persists indefinitely — if the browser crashed mid-session, a stale session object would linger and incorrectly restore on next open. `chrome.storage.session` is automatically scoped to the browser session, so it self-cleans at the right time without requiring explicit lifecycle management.
 
 ### Open Questions
 
@@ -418,6 +453,7 @@ Accessible from the browser's extension settings. Lower-traffic controls:
 | 11 | DP table approach — 1D rolling array vs. 2D | **Decided: 2D** (backtracking requires full row history) |
 | 12 | Session presentation — one at a time vs. full list | **Decided: one at a time** (reduces choice paralysis) |
 | 13 | Skip behavior — discard or cycle to back? | **Decided: cycle to back** (item stays available this session) |
+| 14 | Session state storage — localStorage vs. chrome.storage.session | **Decided: chrome.storage.session** — right lifecycle: survives popup close/tab switch, auto-clears on browser restart. localStorage would persist stale sessions across restarts. |
 
 ## TODO Checklist
 
@@ -433,7 +469,8 @@ P0 Tests
 
 - [x] Stress test: 50–100 items at various budgets (`core/pipeline.test.js`)
 - [x] Integration test: scoring → knapsack → queue pipeline end-to-end (`core/pipeline.test.js`)
-- [ ] UI/popup: add item persists, completed items excluded, points counter increments (hallway testing)
+- [x] UI/popup: add item persists, completed items excluded, points counter increments (hallway testing)
+- [x] Session persistence across popup close/tab switch (chrome.storage.session)
 
 P1 (post-MVP polish)
 

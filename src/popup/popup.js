@@ -1,7 +1,7 @@
-import { getItems, getPendingItems, saveItem, deleteItem, markCompleted, getSettings, saveSettings } from "../utils/storage.js";
+import { getItems, getPendingItems, saveItem, deleteItem, markCompleted, getSettings, saveSettings, saveSession, loadSession, clearSession } from "../utils/storage.js";
 import { scoreItems } from "../utils/scoring.js";
 import { knapsack } from "../core/knapsack.js";
-import { buildSessionQueue } from "../core/queue.js";
+import { SessionQueue, buildSessionQueue } from "../core/queue.js";
 
 // ── State ──────────────────────────────────────────────────
 let sessionQueue = null;
@@ -109,8 +109,14 @@ function buildItemCard(item) {
   return li;
 }
 
+// ── Session persistence ────────────────────────────────────
+async function persistSession() {
+  if (!sessionQueue || sessionQueue.isEmpty) return;
+  await saveSession({ items: sessionQueue.toArray(), pointsEarned: sessionPointsEarned });
+}
+
 // ── Session generation ─────────────────────────────────────
-function generateSession() {
+async function generateSession() {
   const budget = parseInt(budgetInput.value, 10);
   const mood = moodSelect.value || null;
 
@@ -126,12 +132,12 @@ function generateSession() {
   const result = knapsack(budget, scored);
 
   if (result.selected.length === 0) {
-    // Nothing fits — could show a toast, but just return for now
     return;
   }
 
   sessionQueue = buildSessionQueue(result.selected);
   sessionPointsEarned = 0;
+  await persistSession();
   showView(viewSession);
   renderSessionCard();
 }
@@ -260,29 +266,37 @@ btnGenerate.addEventListener("click", generateSession);
 
 addForm.addEventListener("submit", handleAddSubmit);
 
-btnDone.addEventListener("click", () => {
+btnDone.addEventListener("click", async () => {
   const item = sessionQueue.dequeue();
   if (item) {
     markCompleted(item.id);
     addPoints(10);
     sessionPointsEarned += 10;
   }
+  if (sessionQueue.isEmpty) {
+    await clearSession();
+  } else {
+    await persistSession();
+  }
   renderSessionCard();
 });
 
-btnSkip.addEventListener("click", () => {
+btnSkip.addEventListener("click", async () => {
   sessionQueue.skip();
+  await persistSession();
   renderSessionCard();
 });
 
 btnEndSession.addEventListener("click", () => {
   sessionQueue = null;
+  clearSession();
   showView(viewQueue);
   renderQueueView();
 });
 
 btnSessionDone.addEventListener("click", () => {
   sessionQueue = null;
+  clearSession();
   showView(viewQueue);
   renderQueueView();
 });
@@ -297,4 +311,15 @@ function escHtml(str) {
 }
 
 // ── Init ───────────────────────────────────────────────────
-renderQueueView();
+(async () => {
+  const saved = await loadSession();
+  console.log("[DeQueue] restored session:", saved);
+  if (saved?.items?.length) {
+    sessionQueue = new SessionQueue(saved.items);
+    sessionPointsEarned = saved.pointsEarned ?? 0;
+    showView(viewSession);
+    renderSessionCard();
+  } else {
+    renderQueueView();
+  }
+})();

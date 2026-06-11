@@ -72,8 +72,11 @@ npm install
 **Build the extension:**
 
 ```bash
-npm run build
+npm run build        # one-time build
+npm run dev          # watch mode — rebuilds on every file save
 ```
+
+After each build, go to `chrome://extensions` and click the refresh icon on the DeQueue card to reload it.
 
 **Load in Firefox:**
 
@@ -91,7 +94,19 @@ npm run build
 npm test
 ```
 
-**Watch mode:**
+**Watch mode (auto-rebuild on save):**
+
+```bash
+npm run dev
+```
+
+**Run tests:**
+
+```bash
+npm test
+```
+
+**Test watch mode:**
 
 ```bash
 npm run test:watch
@@ -118,6 +133,6 @@ npm run test:watch
 
 - **Runtime:** Browser extension (WebExtensions MV3), Firefox + Chrome/Brave
 - **Build:** Vite + vite-plugin-web-extension
-- **Storage:** localStorage (client-side only, no backend, no accounts)
+- **Storage:** localStorage (item/settings data) + `chrome.storage.session` (active session state)
 - **Tests:** Vitest, jsdom
 - **Linting/formatting:** ESLint, Prettier

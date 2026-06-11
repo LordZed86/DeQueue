@@ -132,6 +132,48 @@ export function saveSettings(patch) {
   localStorage.setItem(KEYS.SETTINGS, JSON.stringify({ ...current, ...patch }));
 }
 
+// ─── Session state ────────────────────────────────────────────────────────────
+// Stored in chrome.storage.session so it survives popup closes and tab switches
+// but is automatically cleared when the browser restarts.
+
+const SESSION_KEY = "dequeue_active_session";
+
+/**
+ * @typedef {Object} ActiveSession
+ * @property {import('../core/knapsack.js').KnapsackItem[]} items - Remaining queue items in order
+ * @property {number} pointsEarned - Points accumulated this session so far
+ */
+
+/**
+ * Persists the active session so it survives popup close/reopen.
+ * No-ops gracefully if chrome.storage is unavailable (e.g. unit tests).
+ * @param {ActiveSession} session
+ * @returns {Promise<void>}
+ */
+export function saveSession(session) {
+  if (!globalThis.chrome?.storage?.session) return Promise.resolve();
+  return chrome.storage.session.set({ [SESSION_KEY]: session });
+}
+
+/**
+ * Retrieves the persisted session, or null if none exists.
+ * @returns {Promise<ActiveSession | null>}
+ */
+export async function loadSession() {
+  if (!globalThis.chrome?.storage?.session) return null;
+  const result = await chrome.storage.session.get(SESSION_KEY);
+  return result[SESSION_KEY] ?? null;
+}
+
+/**
+ * Clears the persisted session (call on End Session or when all items are done).
+ * @returns {Promise<void>}
+ */
+export function clearSession() {
+  if (!globalThis.chrome?.storage?.session) return Promise.resolve();
+  return chrome.storage.session.remove(SESSION_KEY);
+}
+
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
 /**

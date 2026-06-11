@@ -146,3 +146,14 @@
 - ~~Max budget?~~ → **60 minutes** — gap-filling use case, not day-planning
 - ~~1D vs. 2D DP table?~~ → **2D** — backtracking requires full row history
 - ~~Skip behavior — discard or cycle?~~ → **Cycle to back** — item stays available this session
+
+## new notes based on short beta hallway testing
+
+- mark things as visited when visiting an item so if interrupted partway through it doesnt show as complete.
+- autofill title
+- session consistance currently the session resets when opening an item because it opens in a new tab and you need to reopen the extension
+- article or video only mode - what if i am at work and cant use audio
+- ability to add user tags for mood or incorporate topic into the algorithm so users can choose to pinpoint something like creative or research
+- handle long form items (greater than 60min elegantly, like make a mode for extended sessions, my thoughts are if i save a painting tutorial and im bored on a weekend and have a lot of free time this can help me weed through my long form videos or tutorial pages)
+- item organization system, if this starts to fill up it may be nice to have a directory hierarchy of some sort to manage items and display them in a more organized manner. this could be like a folder base, or a sort by type, length, topic... or something else.
+- need to test on a multitude of sites to see if it scrapes data from all the major sites

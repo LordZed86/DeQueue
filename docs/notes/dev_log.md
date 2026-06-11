@@ -340,4 +340,34 @@ The entire function body is Chrome API calls chained together (`chrome.tabs.quer
 
 ---
 
+---
+
+## Session Persistence
+
+**Date:** 2026-06-10
+
+### Problem
+
+The popup is a browser window — it is destroyed every time it closes. Clicking a link in the session view opens a new tab, which closes the popup. When the user reopened the extension, `sessionQueue` (a plain JS variable) was gone, and the UI defaulted back to the queue view asking them to generate a new session.
+
+### Solution
+
+Added `saveSession`, `loadSession`, and `clearSession` to `utils/storage.js` using `chrome.storage.session`. The init block in `popup.js` now checks for a saved session on every popup open and restores it directly into a `SessionQueue`, skipping the queue view entirely.
+
+### Files changed
+
+- `src/utils/storage.js` — added session persistence API (three functions)
+- `src/popup/popup.js` — async init, `persistSession()` called on generate/Done/Skip, `clearSession()` on End Session and session complete
+
+### Key decisions
+
+- **`chrome.storage.session` over localStorage:** localStorage persists indefinitely — a crashed session would incorrectly restore on next open. `chrome.storage.session` is automatically scoped to the browser session and self-cleans at the right time.
+- **Save on generate, not just on Done/Skip:** The session must be written before the user clicks the first link (which closes the popup). Waiting until Done/Skip would be too late.
+- **`await` on all storage writes in popup:** `chrome.storage.session` is async. Missing an `await` before popup close means the write races with process teardown and may silently drop. All `saveSession` / `clearSession` calls in popup.js are now awaited.
+- **`SessionQueue` imported directly in popup.js:** The restore path constructs a `SessionQueue` from the raw saved item array (not through `buildSessionQueue`, which would re-sort already-ordered data). This required importing the class directly.
+
+### Bugs / surprises
+
+- First implementation didn't `await` the `saveSession` call inside `generateSession`. The popup could close before the async write completed, leaving nothing in storage to restore. Fixed by making `generateSession` and `persistSession` async.
+
 _This log will be updated as each new file or feature is built._
