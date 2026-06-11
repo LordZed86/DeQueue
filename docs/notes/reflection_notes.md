@@ -79,7 +79,13 @@ Running list of things worth thinking about for the final reflection paper and p
 - It's a raw write — it replaces the entire list with whatever you pass. Exposing it would let any caller silently wipe the queue if they forgot to read first.
 - `saveItem`, `updateItem`, `deleteItem`, and `markCompleted` all do the read-modify-write cycle correctly. There's no safe reason for a caller to bypass them.
 
-### Why does `clearAll` only remove DeQueue keys instead of calling `localStorage.clear()`?
+### Why use `chrome.storage.session` for active session state instead of localStorage?
+
+- Session state has a different lifetime than item data. Items should survive browser restarts — that's why the user saved them. Session state should not. A session is "I have 20 minutes right now" — not something to restore days later.
+- `chrome.storage.session` matches that lifecycle exactly: it survives popup close and tab switches within a session, but auto-clears on browser restart.
+- localStorage would require manual cleanup and would fail silently on crash — the user would reopen the extension and see a phantom session from a week ago.
+
+### Why use `chrome.storage.session` for active session state instead of localStorage?
 
 - `localStorage.clear()` would wipe everything stored at the extension's origin, including any data that other extension components might store in the future.
 - Scoping the removal to `dequeue_items` and `dequeue_settings` is safer and less surprising.
@@ -196,6 +202,13 @@ These are questions worth answering honestly in the reflection paper.
 - "How does the content script estimate reading time?" — Two strategies: `twitter:data1` meta (used by Medium), and word count of the `<article>` element divided by ~200 wpm. Both are pre-filled and editable before saving.
 - "Why aren't `background.js` and `popup.js` unit tested?" — See the testing rationale in `reflection_notes.md` and `dev_log.md`. The short answer: no logic to test in background.js; DOM glue over tested modules in popup.js.
 - "Your content script tests use `og:type` to trigger the video path but your code also checks the hostname. How do you know the hostname branch is correct?" — Correct by inspection: it's three lines of regex with no branching. The `og:type` tests cover the same downstream behavior.
+
+### Defense questions from session persistence work
+
+- "Why didn't you just use localStorage for the session state too?" — localStorage persists until explicitly cleared. If the browser crashed mid-session, the stale session would incorrectly restore the next time the user opened the extension. `chrome.storage.session` is automatically scoped to the browser session and self-cleans at the right time — no manual lifecycle management needed.
+- "Why does the popup close when the user clicks a link?" — The extension popup is a browser window, not a persistent process. Any navigation event (opening a tab, clicking a link) closes it. This is a fundamental WebExtensions constraint, not a bug.
+- "Why didn't the first implementation work even though the design was correct?" — The `saveSession` call wasn't awaited inside `generateSession`. `chrome.storage.session` is async — calling it without `await` starts the write but doesn't wait for it to finish. The popup can close before the write completes, leaving nothing in storage to restore. The fix was making the function async and awaiting the write before the popup could close.
+- "How does the restore path know which item to show first?" — It reconstructs a `SessionQueue` directly from the saved item array, which is already in priority order from when the session was first generated. It doesn't re-run `buildSessionQueue` (which would re-sort) — it trusts the saved order.
 
 ### Demo preparation
 
