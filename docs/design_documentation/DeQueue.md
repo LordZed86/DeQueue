@@ -2,7 +2,7 @@
 
 **Author:** Kellen Jones
 **Course:** CS 398 — Algorithmic Problem Solving
-**Last Updated:** 2026-06-10
+**Last Updated:** 2026-06-11
 
 ---
 
@@ -125,7 +125,8 @@ User preferences stored in localStorage under `dequeue_settings`:
 
 - TODO: Do we want a `source` field to track where an item came from (manual, auto-scraped)?
 - TODO: Should `topic` be a single tag or an array? Multiple tags are more flexible but complicate filtering UI.
-- TODO: What's the upper bound on `timeEstimate`? A 3-hour documentary is technically valid but probably breaks UX assumptions.
+- TODO: What's the upper bound on `timeEstimate`? A 3-hour documentary is technically valid but probably breaks UX assumptions. Early hallway feedback suggests a "long-form" mode for items > 60 min is worth exploring.
+- TODO: `inProgress` flag is stored on the item — should it be cleared if the user deletes and re-adds an item? Currently no-ops correctly because delete removes the whole item.
 
 ---
 
@@ -254,7 +255,6 @@ Under equal weights, recency and staleness cancel each other out algebraically �
 
 ### Open Questions
 
-- TODO: Should weights be user-configurable in the options page, or keep defaults and expose a single "prefer newer ↔ clear backlog" slider?
 - TODO: Decay curve is currently linear. Logarithmic decay would age items more gently — worth experimenting with once hallway testing produces feedback.
 
 ---
@@ -383,11 +383,15 @@ The session view shows one item at a time (not a full list) to reduce choice par
 
 ### Options Page
 
-Accessible from the browser's extension settings. Lower-traffic controls:
+Accessible via the gear button in the popup header or from the browser's extension settings page. Shipped controls:
 
-- Value function weight sliders (if we expose them)
-- Default budget setting
+- Default time budget (minutes)
 - Default mood picker
+- Four scoring weight sliders (interest, recency, staleness, mood match) — auto-normalized so they always sum to 1; live % labels update as the sliders move
+- Reset to defaults button
+
+Remaining / future:
+
 - Points/gamification settings
 - Data export/import
 
@@ -442,7 +446,7 @@ Accessible from the browser's extension settings. Lower-traffic controls:
 | --- | --- | --- |
 | 1 | Safari support — P2 stretch or cut entirely? | **Decided: P2 stretch** |
 | 2 | Single topic tag vs. array of tags | Open |
-| 3 | Value function weights — hardcoded defaults or user-configurable? | Open |
+| 3 | Value function weights — hardcoded defaults or user-configurable? | **Decided: user-configurable via options page weight sliders** |
 | 4 | Decay curve shape (linear vs. logarithmic) | Open |
 | 5 | Max supported time budget | **Decided: 60 minutes** |
 | 6 | localStorage vs. IndexedDB to start | **Decided: localStorage** |
@@ -474,8 +478,9 @@ P0 Tests
 
 P1 (post-MVP polish)
 
-- [ ] src/options/ — options page (weight sliders, default budget, mood picker)
-- [ ] Sorting/filtering UI (by topic, recency, mood)
+- [x] src/options/ — options page (weight sliders, default budget, mood picker)
+- [x] Sorting/filtering UI (by topic, recency, mood) + sort by priority/interest/recency/time
+- [x] In-progress flag for interrupted items — pins item to top of queue with badge on next open
 - [ ] Hallway testing (general usability + ADHD-appropriateness)
 
 P2 (stretch)

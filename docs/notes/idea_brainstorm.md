@@ -103,8 +103,9 @@
 - ~~**Points counter**~~ ✓ shipped — 10 pts/item, header + session complete screen
 - ~~**Manifest + popup wiring**~~ ✓ shipped
 - ~~**Content script metadata scraping**~~ ✓ shipped
-- **Sorting/filtering UI** — sort/filter controls are in the popup HTML but not wired up yet
-- **Options page** — weight sliders, default budget, default mood picker
+- ~~**Sorting/filtering UI**~~ ✓ shipped — topic/mood filters + sort by priority, interest, recency, time; count shows "X of Y" when filtered
+- ~~**Options page**~~ ✓ shipped — weight sliders (auto-normalized), default budget, default mood; gear button in popup header
+- ~~**In-progress flag**~~ ✓ shipped — interrupting a session flags the current item; it pins to the top of the queue with a badge on next open
 - ~~**Extension icons**~~ ✓ SVG placeholder icon in place; PNG exports pending
 
 ### P2 — Enhancements (after core works)
@@ -132,7 +133,7 @@
 ## Open Design Questions (still unresolved)
 
 - Single topic tag vs. array of tags — array is more flexible but complicates filter UI
-- Should scoring weights be user-configurable from the start, or hardcode defaults until options page?
+- ~~Should scoring weights be user-configurable from the start, or hardcode defaults until options page?~~ → **Shipped: user-configurable via options page sliders with auto-normalization**
 - What's the right staleness ceiling — 30 days? 14? Should it be user-adjustable?
 - Recency vs. staleness weight asymmetry — which direction should the default favor?
 - YouTube scraper — worth maintaining given how often YouTube's DOM changes?

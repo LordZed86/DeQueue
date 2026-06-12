@@ -210,10 +210,22 @@ These are questions worth answering honestly in the reflection paper.
 - "Why didn't the first implementation work even though the design was correct?" — The `saveSession` call wasn't awaited inside `generateSession`. `chrome.storage.session` is async — calling it without `await` starts the write but doesn't wait for it to finish. The popup can close before the write completes, leaving nothing in storage to restore. The fix was making the function async and awaiting the write before the popup could close.
 - "How does the restore path know which item to show first?" — It reconstructs a `SessionQueue` directly from the saved item array, which is already in priority order from when the session was first generated. It doesn't re-run `buildSessionQueue` (which would re-sort) — it trusts the saved order.
 
+### Defense questions from sort/filter + options work (2026-06-11)
+
+- "How does the sort-by-priority work — is it just the knapsack order?" — No. The filter/sort runs `scoreItems()` on the visible subset fresh each time, using the current mood selection. The queue view and session generation now use the same scoring signal. Sort by interest/recency/time use raw item fields.
+- "Why do you have both a mood filter in the queue view AND a mood selector for session generation?" — They do different things. The session mood selector feeds into `scoreItems()` and affects which items the knapsack picks. The queue mood filter just narrows what's displayed — it doesn't affect session generation. A user might filter to see only "focus" items, then generate a session from that subset.
+- "How does the in-progress flag work if the user closes the browser entirely?" — `inProgress` is stored in localStorage, which persists across browser restarts. The flag survives. `chrome.storage.session` (active session state) would be cleared, but the item-level flag is independent of the session object.
+- "Why auto-normalize the weights in the options page instead of requiring the user to keep them at 100%?" — Because users shouldn't have to do math to tune their preferences. Asking "is interest more important than recency to you?" is a natural question; asking "set these four values to sum to exactly 1.0" is a UX failure. The normalization happens at save time transparently.
+- "What happens if all four weight sliders are at 0?" — The sum is 0, so the division would produce NaN. The code guards against this with `const sum = rawSum || 1`, treating all-zero as the same as all-equal. Every item scores the same in that degenerate case, which is acceptable.
+- "Why does the topic dropdown repopulate on every render instead of caching it?" — The item list can change (add, delete) between renders. Repopulating from the current item set is the simplest way to stay accurate. It's a small array — the overhead is negligible.
+
 ### Demo preparation
 
-- Have a working session generation ready to show: add 5–10 items manually, set a 20-minute budget, generate a session.
-- Be ready to show the test suite running and passing (123 tests, 5 files).
+- Have a working session generation ready to show: add 5–10 items with varied topics and moods, set a 20-minute budget, generate a session.
+- Demo the filter bar: filter by topic, watch count update; sort by interest, watch order change.
+- Demo the in-progress flag: start a session, click End Session mid-way, show the item pinned with the badge in the queue.
+- Open the options page via the gear button; adjust a weight slider, save, regenerate a session to show the ordering changed.
+- Be ready to show the test suite running and passing (136 tests, 6 files).
 - Be ready to open the DP table in the browser console and show what it looks like for a small input (could add a debug export for this).
 - Load the unpacked extension in Chrome or Firefox and demonstrate the add-item flow with metadata pre-fill on a real page.
 

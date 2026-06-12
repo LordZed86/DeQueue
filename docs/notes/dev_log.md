@@ -371,3 +371,67 @@ Added `saveSession`, `loadSession`, and `clearSession` to `utils/storage.js` usi
 - First implementation didn't `await` the `saveSession` call inside `generateSession`. The popup could close before the async write completed, leaving nothing in storage to restore. Fixed by making `generateSession` and `persistSession` async.
 
 _This log will be updated as each new file or feature is built._
+
+---
+
+---
+
+## Sort/Filter UI, Options Page, In-Progress Flag
+
+**Date:** 2026-06-11
+
+### Files changed
+
+- `src/popup/popup.html` — filter bar (topic, mood, sort dropdowns); gear button in header
+- `src/popup/popup.js` — filter/sort state, `applyFilterSort()`, `populateTopicFilter()`, settings button wiring, in-progress flag on End Session
+- `src/popup/popup.css` — filter bar layout, in-progress badge + card highlight, icon button, points flex spacing
+- `src/utils/storage.js` — added `markInProgress(id)` and `clearInProgress()`
+- `src/manifest.json` — added `options_page`
+- `src/options/options.html` — new file
+- `src/options/options.js` — new file
+- `src/options/options.css` — new file
+
+### Sort/filter bar
+
+#### Decisions
+
+- **Three dropdowns in a compact bar:** topic filter, mood filter, sort order. Placed directly below the queue header so it's always visible without consuming a separate view.
+- **Topic dropdown auto-populated from items:** Scans pending items for unique non-null `topic` values and builds the `<option>` list dynamically. If the user has no topics tagged, the dropdown just shows "All topics" — no dead UI.
+- **Sort piggybacks on `scoreItems()`:** The "By priority" sort already scores items using the current mood selection, so the sort and session generation stay in sync. Other sorts (interest, recency, time) use raw item fields.
+- **In-progress item always pins to top regardless of sort:** A secondary sort pass puts `inProgress: true` items first. The active sort still orders everything else correctly.
+- **Item count shows "X of Y items" when filtered:** Communicates to the user that they're seeing a subset, not the whole queue.
+
+#### Bugs / surprises
+
+- None. `scoreItems` was already importable in `popup.js` so the sort-by-priority path required zero new imports.
+
+---
+
+### Options page (`src/options/`)
+
+#### Decisions
+
+- **Weight sliders with live % labels:** Each slider shows its current value as a percentage next to the label. Updates on `input` event (not `change`) so the label tracks the thumb in real time.
+- **Auto-normalization on save:** The four raw slider values (0–100 each) are divided by their sum, so the stored weights always sum to 1.0 regardless of what the user sets. This means the user doesn't have to think about percentages summing to 100 — they just dial up/down factors relative to each other.
+- **`saveSettings` merge semantics reused:** Options page patches only the three settings fields it owns (`defaultBudget`, `defaultMood`, `weights`). No risk of clobbering other settings fields added later.
+- **Gear button in popup opens options via `chrome.runtime.openOptionsPage()`:** This is the standard MV3 API for opening the options page; it opens in a new tab or the browser's extension settings panel depending on the browser.
+- **`options_page` in manifest (not `options_ui`):** `options_page` opens as a full tab; `options_ui` embeds in the browser's extensions settings page with constraints. Full tab gives us more control over layout.
+
+#### Bugs / surprises
+
+- None. The build picked up `src/options/options.html` automatically once `options_page` was added to the manifest — `vite-plugin-web-extension` handles all entry points declared in the manifest.
+
+---
+
+### In-progress flag
+
+#### Decisions
+
+- **Flag is stored on the item in localStorage:** `inProgress: boolean` added to the item object via `markInProgress(id)`. At most one item is flagged at a time — `markInProgress` clears the flag on all other items before setting it.
+- **Set on End Session, cleared on Done:** End Session flags the item currently shown in the session card. Done (completing an item) calls `clearInProgress()` to remove any flag — the item is done so the flag is irrelevant.
+- **Visual: red border + "In Progress" badge:** The card gets `border-color: var(--color-accent)` and a small uppercase badge in the meta row. Consistent with the extension's accent color language (accent = important/active).
+- **Pins above sort order, not as a separate section:** A secondary sort after the main sort ensures the in-progress item always appears first without needing a separate UI zone or heading.
+
+#### Bugs / surprises
+
+- None on first implementation.
