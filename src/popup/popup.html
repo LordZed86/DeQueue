@@ -11,6 +11,7 @@
     <header>
       <span class="logo">DeQueue</span>
       <span class="points" id="points-display">0 pts</span>
+      <button id="btn-settings" class="btn-icon" title="Settings" aria-label="Open settings">⚙</button>
     </header>
 
     <!-- ── Queue View ─────────────────────────────────────── -->
@@ -41,6 +42,25 @@
       <div class="queue-header">
         <span id="item-count">0 items</span>
         <button id="btn-add-item" class="btn-ghost">+ Add item</button>
+      </div>
+
+      <div class="filter-bar">
+        <select id="filter-topic" title="Filter by topic">
+          <option value="">All topics</option>
+        </select>
+        <select id="filter-mood" title="Filter by mood">
+          <option value="">Any mood</option>
+          <option value="focus">Focus</option>
+          <option value="low-energy">Low energy</option>
+          <option value="curious">Curious</option>
+          <option value="fun">Fun</option>
+        </select>
+        <select id="sort-by" title="Sort order">
+          <option value="score">By priority</option>
+          <option value="interest">By interest</option>
+          <option value="recency">By newest</option>
+          <option value="time">By time</option>
+        </select>
       </div>
 
       <ul id="item-list" class="item-list">

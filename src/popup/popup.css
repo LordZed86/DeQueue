@@ -74,6 +74,23 @@ header {
   font-size: 12px;
   font-weight: 600;
   color: var(--color-star-on);
+  flex: 1;
+  text-align: right;
+}
+
+.btn-icon {
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 15px;
+  cursor: pointer;
+  padding: 0 0 0 8px;
+  line-height: 1;
+  transition: color 0.15s;
+}
+
+.btn-icon:hover {
+  color: var(--color-text);
 }
 
 /* ── Views ────────────────────────────────────────────────── */
@@ -189,6 +206,19 @@ header {
   color: var(--color-text-muted);
 }
 
+/* ── Filter bar ───────────────────────────────────────────── */
+.filter-bar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.filter-bar select {
+  flex: 1;
+  padding: 5px 6px;
+  font-size: 12px;
+}
+
 /* ── Item list ────────────────────────────────────────────── */
 .item-list {
   list-style: none;
@@ -240,6 +270,21 @@ header {
 
 .item-card-delete:hover {
   color: var(--color-accent);
+}
+
+.item-card--inprogress {
+  border-color: var(--color-accent);
+}
+
+.badge-inprogress {
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
 .empty-state {

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DeQueue — Settings</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <header>
+      <span class="logo">DeQueue</span>
+      <span class="logo-sub">Settings</span>
+    </header>
+
+    <main>
+      <!-- ── Session defaults ──────────────────────────────── -->
+      <section class="card">
+        <h2>Session defaults</h2>
+
+        <label for="default-budget">Default time budget (minutes)</label>
+        <input id="default-budget" type="number" min="1" max="120" value="20" />
+
+        <label for="default-mood">Default mood</label>
+        <select id="default-mood">
+          <option value="">None</option>
+          <option value="focus">Focus</option>
+          <option value="low-energy">Low energy</option>
+          <option value="curious">Curious</option>
+          <option value="fun">Fun</option>
+        </select>
+      </section>
+
+      <!-- ── Scoring weights ───────────────────────────────── -->
+      <section class="card">
+        <h2>Priority weights</h2>
+        <p class="hint">Control how the algorithm ranks items. Values are relative — they are normalized automatically.</p>
+
+        <label>
+          Interest
+          <span class="weight-value" id="val-interest">50%</span>
+        </label>
+        <input id="weight-interest" type="range" min="0" max="100" value="50" />
+
+        <label>
+          Recency (new items)
+          <span class="weight-value" id="val-recency">20%</span>
+        </label>
+        <input id="weight-recency" type="range" min="0" max="100" value="20" />
+
+        <label>
+          Staleness (old items)
+          <span class="weight-value" id="val-staleness">20%</span>
+        </label>
+        <input id="weight-staleness" type="range" min="0" max="100" value="20" />
+
+        <label>
+          Mood match
+          <span class="weight-value" id="val-mood">10%</span>
+        </label>
+        <input id="weight-mood" type="range" min="0" max="100" value="10" />
+      </section>
+
+      <div class="actions">
+        <span id="save-status" class="save-status"></span>
+        <button id="btn-reset" class="btn-ghost">Reset to defaults</button>
+        <button id="btn-save" class="btn-primary">Save settings</button>
+      </div>
+    </main>
+
+    <script type="module" src="options.js"></script>
+  </body>
+</html>

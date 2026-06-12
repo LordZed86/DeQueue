@@ -1,4 +1,4 @@
-import { getItems, getPendingItems, saveItem, deleteItem, markCompleted, getSettings, saveSettings, saveSession, loadSession, clearSession } from "../utils/storage.js";
+import { getItems, getPendingItems, saveItem, deleteItem, markCompleted, markInProgress, clearInProgress, getSettings, saveSettings, saveSession, loadSession, clearSession } from "../utils/storage.js";
 import { scoreItems } from "../utils/scoring.js";
 import { knapsack } from "../core/knapsack.js";
 import { SessionQueue, buildSessionQueue } from "../core/queue.js";
@@ -6,6 +6,9 @@ import { SessionQueue, buildSessionQueue } from "../core/queue.js";
 // ── State ──────────────────────────────────────────────────
 let sessionQueue = null;
 let sessionPointsEarned = 0;
+let filterTopic = "";
+let filterMood = "";
+let sortBy = "score";
 
 // ── DOM refs ───────────────────────────────────────────────
 const viewQueue = document.getElementById("view-queue");
@@ -18,6 +21,12 @@ const itemCount = document.getElementById("item-count");
 const emptyState = document.getElementById("empty-state");
 const budgetInput = document.getElementById("budget-input");
 const moodSelect = document.getElementById("mood-select");
+
+const btnSettings = document.getElementById("btn-settings");
+
+const filterTopicEl = document.getElementById("filter-topic");
+const filterMoodEl = document.getElementById("filter-mood");
+const sortByEl = document.getElementById("sort-by");
 
 const btnGenerate = document.getElementById("btn-generate");
 const btnAddItem = document.getElementById("btn-add-item");
@@ -67,12 +76,48 @@ function renderPoints() {
 }
 
 // ── Queue view ─────────────────────────────────────────────
+function populateTopicFilter(items) {
+  const topics = [...new Set(items.map((i) => i.topic).filter(Boolean))].sort();
+  const current = filterTopicEl.value;
+  filterTopicEl.innerHTML = '<option value="">All topics</option>';
+  topics.forEach((t) => {
+    const opt = document.createElement("option");
+    opt.value = t;
+    opt.textContent = t;
+    if (t === current) opt.selected = true;
+    filterTopicEl.appendChild(opt);
+  });
+}
+
+function applyFilterSort(items) {
+  let result = items;
+
+  if (filterTopic) result = result.filter((i) => i.topic === filterTopic);
+  if (filterMood)  result = result.filter((i) => i.mood === filterMood);
+
+  const scored = scoreItems(result, { currentMood: moodSelect.value || null });
+
+  if (sortBy === "score")    scored.sort((a, b) => b.value - a.value);
+  if (sortBy === "interest") scored.sort((a, b) => b.interest - a.interest);
+  if (sortBy === "recency")  scored.sort((a, b) => b.addedAt - a.addedAt);
+  if (sortBy === "time")     scored.sort((a, b) => a.timeEstimate - b.timeEstimate);
+
+  // In-progress item always floats to the top regardless of sort
+  scored.sort((a, b) => (b.inProgress ? 1 : 0) - (a.inProgress ? 1 : 0));
+
+  return scored;
+}
+
 function renderQueueView() {
   const pending = getPendingItems();
   const settings = getSettings();
 
   budgetInput.value = settings.defaultBudget ?? 20;
   if (settings.defaultMood) moodSelect.value = settings.defaultMood;
+
+  populateTopicFilter(pending);
+
+  const visible = applyFilterSort(pending);
 
   itemList.innerHTML = "";
 
@@ -81,8 +126,11 @@ function renderQueueView() {
     itemCount.textContent = "0 items";
   } else {
     emptyState.classList.add("hidden");
-    itemCount.textContent = `${pending.length} item${pending.length !== 1 ? "s" : ""}`;
-    pending.forEach((item) => itemList.appendChild(buildItemCard(item)));
+    const label = filterTopic || filterMood
+      ? `${visible.length} of ${pending.length} item${pending.length !== 1 ? "s" : ""}`
+      : `${pending.length} item${pending.length !== 1 ? "s" : ""}`;
+    itemCount.textContent = label;
+    visible.forEach((item) => itemList.appendChild(buildItemCard(item)));
   }
 
   renderPoints();
@@ -90,7 +138,7 @@ function renderQueueView() {
 
 function buildItemCard(item) {
   const li = document.createElement("li");
-  li.className = "item-card";
+  li.className = "item-card" + (item.inProgress ? " item-card--inprogress" : "");
   li.innerHTML = `
     <div class="item-card-body">
       <div class="item-card-title" title="${escHtml(item.title)}">${escHtml(item.title)}</div>
@@ -98,6 +146,7 @@ function buildItemCard(item) {
         <span>${item.timeEstimate} min</span>
         ${item.topic ? `<span>${escHtml(item.topic)}</span>` : ""}
         <span>${"★".repeat(item.interest)}</span>
+        ${item.inProgress ? `<span class="badge-inprogress">In progress</span>` : ""}
       </div>
     </div>
     <button class="item-card-delete" data-id="${item.id}" aria-label="Delete ${escHtml(item.title)}">✕</button>
@@ -252,6 +301,26 @@ starRow.addEventListener("click", (e) => {
   renderStars(value);
 });
 
+btnSettings.addEventListener("click", () => {
+  chrome.runtime?.openOptionsPage?.();
+});
+
+// ── Filter / sort wiring ───────────────────────────────────
+filterTopicEl.addEventListener("change", () => {
+  filterTopic = filterTopicEl.value;
+  renderQueueView();
+});
+
+filterMoodEl.addEventListener("change", () => {
+  filterMood = filterMoodEl.value;
+  renderQueueView();
+});
+
+sortByEl.addEventListener("change", () => {
+  sortBy = sortByEl.value;
+  renderQueueView();
+});
+
 // ── Event wiring ───────────────────────────────────────────
 btnAddItem.addEventListener("click", () => {
   showView(viewAdd);
@@ -270,6 +339,7 @@ btnDone.addEventListener("click", async () => {
   const item = sessionQueue.dequeue();
   if (item) {
     markCompleted(item.id);
+    clearInProgress();
     addPoints(10);
     sessionPointsEarned += 10;
   }
@@ -288,6 +358,11 @@ btnSkip.addEventListener("click", async () => {
 });
 
 btnEndSession.addEventListener("click", () => {
+  // Flag the current item as interrupted so it surfaces at the top of the queue
+  if (sessionQueue && !sessionQueue.isEmpty) {
+    const current = sessionQueue.peek();
+    if (current) markInProgress(current.id);
+  }
   sessionQueue = null;
   clearSession();
   showView(viewQueue);

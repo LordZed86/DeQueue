@@ -93,6 +93,27 @@ export function getPendingItems() {
   return getItems().filter((i) => !i.completed);
 }
 
+/**
+ * Marks an item as in-progress (session was interrupted on this item).
+ * Clears the flag on all other items first so at most one is flagged.
+ * @param {string} id
+ */
+export function markInProgress(id) {
+  const items = getItems().map((i) => ({
+    ...i,
+    inProgress: i.id === id ? true : false,
+  }));
+  localStorage.setItem(KEYS.ITEMS, JSON.stringify(items));
+}
+
+/**
+ * Clears the in-progress flag on all items.
+ */
+export function clearInProgress() {
+  const items = getItems().map((i) => ({ ...i, inProgress: false }));
+  localStorage.setItem(KEYS.ITEMS, JSON.stringify(items));
+}
+
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
 /**
