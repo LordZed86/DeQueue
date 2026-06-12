@@ -370,12 +370,6 @@ Added `saveSession`, `loadSession`, and `clearSession` to `utils/storage.js` usi
 
 - First implementation didn't `await` the `saveSession` call inside `generateSession`. The popup could close before the async write completed, leaving nothing in storage to restore. Fixed by making `generateSession` and `persistSession` async.
 
-_This log will be updated as each new file or feature is built._
-
----
-
----
-
 ## Sort/Filter UI, Options Page, In-Progress Flag
 
 **Date:** 2026-06-11
@@ -435,3 +429,99 @@ _This log will be updated as each new file or feature is built._
 #### Bugs / surprises
 
 - None on first implementation.
+
+---
+
+---
+
+## Streak, Session Summary, In-Progress Resume, Site Compatibility, Achievements
+
+**Date:** 2026-06-12
+
+### Files changed
+
+- `src/utils/storage.js` — added `KEYS.STREAK`, `KEYS.ACHIEVEMENTS`; `getStreak()`, `updateStreak()`, `getTotalCompleted()`, `getUnlockedAchievements()`, `unlockAchievement()`; `clearAll()` now wipes all four keys
+- `src/utils/achievements.js` — new file; defines 6 achievement milestones and `checkAchievements(stats, unlockedIds)`
+- `src/utils/achievements.test.js` — new file; 10 tests
+- `src/utils/storage.test.js` — added streak tests (8 new)
+- `src/content/content.js` — added `cleanDocumentTitle()` helper + export; used in `extractTitle()` fallback
+- `src/content/content.test.js` — added `cleanDocumentTitle` tests (6 new); updated `extractTitle` fallback test
+- `src/popup/popup.html` — streak display in header; achievements button + panel; toast element; session summary gets items/streak lines
+- `src/popup/popup.js` — streak display wired into `renderPoints()`; `sessionItemsCompleted` and `sessionStartTime` state; `checkAndUnlock()` called on Done; achievements panel render + toggle; in-progress resume confirm dialog in `generateSession()`
+- `src/popup/popup.css` — `.header-stats`, `.streak`, `.achievement-toast`, `.achievements-panel` and child styles, `.complete-items`, `.complete-streak`
+
+### Streak tracking
+
+#### Decisions
+
+- **`lastDate` stored as "YYYY-MM-DD" string:** Timezone-safe and human-readable in DevTools. `Date.now()` timestamps would require conversion to compare calendar days correctly.
+- **`updateStreak` accepts an optional `todayStr` override:** Makes the function testable without mocking `Date`. Tests pass explicit date strings; production code passes nothing and uses `new Date().toISOString().slice(0, 10)`.
+- **Streak stored in localStorage, not `chrome.storage.session`:** Streaks span days and should survive browser restarts. Session storage would wipe on every browser restart.
+
+#### Bugs / surprises
+
+- None on first implementation. All 8 new tests passed immediately.
+
+---
+
+### Session summary
+
+#### Decisions
+
+- **Show items completed, points earned, and streak on session complete:** More satisfying than just points. Items completed gives a concrete "I did X things" signal. Streak message uses different text for day 1 ("Streak started!") vs. continuation ("N day streak!").
+- **`sessionItemsCompleted` tracked in popup state:** Not derivable from the queue (which is empty by then). Incremented on each Done click alongside `sessionPointsEarned`.
+
+---
+
+### In-progress resume prompt
+
+#### Decisions
+
+- **`confirm()` dialog on Generate Session:** Native browser confirm is accessible, requires no new UI, and is appropriately modal — the user can't accidentally dismiss it. The prompt text includes the item title so the user knows what they're being asked about.
+- **"No" keeps the in-progress flag:** The item remains flagged for next time. Excluding it from the current session's knapsack pool prevents it from appearing without the user's explicit choice.
+- **Budget reduction when resuming:** Subtracting the in-progress item's `timeEstimate` from the budget before running knapsack ensures the total session time still fits the budget. `Math.max(0, budget - item.timeEstimate)` guards against negative budgets if the item alone exceeds the budget.
+
+#### Bugs / surprises
+
+- None on first implementation.
+
+---
+
+### Site compatibility — `cleanDocumentTitle`
+
+#### Problem
+
+Wikipedia and many other sites don't set `og:title` — only `document.title`. Their `document.title` includes a site-name suffix: "Article Name - Wikipedia", "Story | The Guardian". These suffixes clutter the add-item form title field.
+
+#### Solution
+
+`cleanDocumentTitle(raw)` strips the last `" - Site Name"` / `"| Site Name"` / `"– Site Name"` segment using a single regex. Applied only in the `document.title` fallback — `og:title` and `twitter:title` are always clean.
+
+#### Decisions
+
+- **Regex strips only the last segment:** `replace(/\s*[-|–—]\s*[^-|–—]{3,}$/, "")` — the `$` anchor and single replacement ensure we only strip the outermost suffix, not hyphens in the middle of a title ("How to — Actually Focus").
+- **Minimum 3-char site name guard (`{3,}`):** Prevents stripping single-char or two-char suffixes that might be part of a title rather than a site name.
+- **Falls back to `raw.trim()` if the regex strips everything:** Edge case where the entire title matches the suffix pattern. The raw title is better than null.
+
+#### Bugs / surprises
+
+- None on first implementation.
+
+---
+
+### Achievements system
+
+#### Decisions
+
+- **Pure `check(stats)` functions in `achievements.js`:** Each achievement is a plain object with a `check` function — no side effects, no storage access. Makes them trivially testable and easy to add new ones.
+- **`checkAchievements(stats, unlockedIds)` takes the unlocked set as a parameter:** Caller (popup.js) is responsible for reading and writing storage. The achievements module stays pure. This avoids hidden storage reads inside what should be a pure check.
+- **Toast auto-dismisses after 3.5 seconds:** Long enough to read, short enough not to linger. `clearTimeout` before each new toast prevents stacking if multiple achievements unlock at once (e.g. first item unlocks both "First Step" and starts a potential streak).
+- **Achievements panel overlays the popup as a positioned div:** Simpler than a fourth view in the view-switching system. Toggled via `hidden` class, positioned absolutely below the header. Doesn't require changes to the view routing logic.
+- **Locked achievements shown at 40% opacity with 🔒 icon:** User can see what's coming without it being distracting. Motivates future use without requiring separate "locked" and "unlocked" lists.
+- **`speed_run` requires `sessionItemsCompleted >= 1`:** Guards against a trivially empty session (e.g. user generates then immediately ends) unlocking the achievement.
+
+#### Bugs / surprises
+
+- None on first implementation. All 10 tests passed immediately.
+
+_This log will be updated as each new file or feature is built._

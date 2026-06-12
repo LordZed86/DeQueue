@@ -210,6 +210,18 @@ These are questions worth answering honestly in the reflection paper.
 - "Why didn't the first implementation work even though the design was correct?" — The `saveSession` call wasn't awaited inside `generateSession`. `chrome.storage.session` is async — calling it without `await` starts the write but doesn't wait for it to finish. The popup can close before the write completes, leaving nothing in storage to restore. The fix was making the function async and awaiting the write before the popup could close.
 - "How does the restore path know which item to show first?" — It reconstructs a `SessionQueue` directly from the saved item array, which is already in priority order from when the session was first generated. It doesn't re-run `buildSessionQueue` (which would re-sort) — it trusts the saved order.
 
+### Defense questions from streak, achievements, and compatibility work (2026-06-12)
+
+- "Why add a streak? Is that evidence-based for ADHD?" — Streaks are a well-documented behavioral reinforcement tool. Consistent daily engagement is harder for ADHD users to maintain; a visible streak creates an external accountability signal (the "don't break the chain" effect). It's not a clinical intervention but it's grounded in behavioral CBT principles.
+- "How does `updateStreak` know it's a new day?" — It compares `lastDate` (stored as "YYYY-MM-DD") against today's date. If they match, it's a no-op. If yesterday matches, it increments. Otherwise it resets to 1. The date is derived from `new Date().toISOString().slice(0, 10)`.
+- "Why store the streak in localStorage instead of `chrome.storage.session`?" — Streaks span days and must survive browser restarts. Session storage auto-clears on restart, which would wipe the streak every morning.
+- "How did you test `updateStreak` without mocking `Date.now()`?" — The function accepts an optional `todayStr` parameter. Tests pass explicit date strings; production code passes nothing and derives the date internally. This avoids mocking while keeping the function pure and deterministic in tests.
+- "What are the 6 achievements and how were they chosen?" — First item (first step), 5 items (getting started), 25 items (on a roll), 3-day streak (streak started), 7-day streak (week warrior), speed run (complete a session in under 5 minutes). Chosen to reward early use (first item), sustained use (25 items), habit formation (streaks), and focused sessions (speed run).
+- "What's the `speed_run` achievement checking exactly?" — Session duration from when `generateSession` runs to when the last item is marked done, and that at least one item was completed. Guards against trivially empty sessions.
+- "How does `checkAchievements` avoid re-unlocking already-earned achievements?" — It takes a `Set<string>` of already-unlocked IDs and filters them out before checking conditions. The caller (popup.js) reads from storage and passes the set in — the achievements module stays pure with no storage access of its own.
+- "Why does the toast auto-dismiss instead of requiring a click?" — A required click would interrupt the session flow. The toast is informational, not blocking. 3.5 seconds is long enough to read but short enough not to linger.
+- "Why does `cleanDocumentTitle` only strip the last suffix segment?" — A title like "How to — Actually Focus" has a dash in the middle that should not be stripped. Anchoring the regex to `$` and replacing only once ensures we only remove the site name at the end, not content from the title itself.
+
 ### Defense questions from sort/filter + options work (2026-06-11)
 
 - "How does the sort-by-priority work — is it just the knapsack order?" — No. The filter/sort runs `scoreItems()` on the visible subset fresh each time, using the current mood selection. The queue view and session generation now use the same scoring signal. Sort by interest/recency/time use raw item fields.
@@ -223,11 +235,13 @@ These are questions worth answering honestly in the reflection paper.
 
 - Have a working session generation ready to show: add 5–10 items with varied topics and moods, set a 20-minute budget, generate a session.
 - Demo the filter bar: filter by topic, watch count update; sort by interest, watch order change.
-- Demo the in-progress flag: start a session, click End Session mid-way, show the item pinned with the badge in the queue.
+- Demo the in-progress flag: start a session, click End Session mid-way, show the item pinned with the badge; regenerate to trigger the resume prompt.
 - Open the options page via the gear button; adjust a weight slider, save, regenerate a session to show the ordering changed.
-- Be ready to show the test suite running and passing (136 tests, 6 files).
+- Demo achievements: complete an item to trigger the "First Step" toast; open the 🏅 panel to show locked/unlocked state.
+- Demo streak: header shows 🔥 N after first completion; session complete screen shows streak message.
+- Be ready to show the test suite running and passing (157 tests, 7 files).
 - Be ready to open the DP table in the browser console and show what it looks like for a small input (could add a debug export for this).
-- Load the unpacked extension in Chrome or Firefox and demonstrate the add-item flow with metadata pre-fill on a real page.
+- Load the unpacked extension in Chrome or Firefox and demonstrate the add-item flow with metadata pre-fill on a real page (try Wikipedia to show clean title extraction).
 
 ---
 

@@ -2,7 +2,7 @@
 
 **Author:** Kellen Jones
 **Course:** CS 398 — Algorithmic Problem Solving
-**Last Updated:** 2026-06-11
+**Last Updated:** 2026-06-12
 
 ---
 
@@ -36,8 +36,9 @@ src/
 │   │                      # Pure function: no DOM, no storage, no side effects
 │   └── queue.js           # SessionQueue — presents knapsack output one item at a time
 ├── utils/
-│   ├── storage.js         # Thin wrapper around localStorage
-│   └── scoring.js         # Value function — computes priority score for each item
+│   ├── storage.js         # Thin wrapper around localStorage + chrome.storage.session
+│   ├── scoring.js         # Value function — computes priority score for each item
+│   └── achievements.js    # Achievement definitions and unlock logic
 └── assets/
     └── icons/             # Extension icon at various sizes (16, 48, 128px)
 ```
@@ -309,6 +310,8 @@ localStorage:
   "dequeue_items"         → JSON array of Item objects
   "dequeue_settings"      → JSON object of user preferences
   "dequeue_points"        → integer (total points; UI-layer state, not in Item model)
+  "dequeue_streak"        → { count: number, lastDate: "YYYY-MM-DD" }
+  "dequeue_achievements"  → JSON array of unlocked achievement ID strings
 
 chrome.storage.session:
   "dequeue_active_session" → { items: KnapsackItem[], pointsEarned: number }
@@ -326,10 +329,19 @@ saveItem(item)          // append
 updateItem(item)        // replace by id (no-op if not found)
 deleteItem(id)          // remove by id (no-op if not found)
 markCompleted(id, ts?)  // set completed=true, completedAt=ts (defaults to Date.now())
+getTotalCompleted()     // → number  count of all completed items (for achievements)
 
 // Settings
 getSettings()           // → Settings (merged with defaults; never throws)
 saveSettings(patch)     // merge patch into existing settings
+
+// Streak
+getStreak()             // → { count, lastDate }
+updateStreak(todayStr?) // call on each item completion; increments or resets
+
+// Achievements
+getUnlockedAchievements() // → Set<string>  IDs of unlocked achievements
+unlockAchievement(id)     // adds id to the unlocked set
 
 // Session persistence
 saveSession(session)    // → Promise<void>  write active session to chrome.storage.session
@@ -337,7 +349,7 @@ loadSession()           // → Promise<ActiveSession | null>  restore on popup o
 clearSession()          // → Promise<void>  remove on End Session or session complete
 
 // Utility
-clearAll()              // removes dequeue_items and dequeue_settings only
+clearAll()              // removes all dequeue_* localStorage keys
 ```
 
 ### Why not localStorage for session state?
@@ -369,7 +381,8 @@ The popup is the primary surface — it opens when the user clicks the extension
 - Filter by topic, mood, content type
 - Sort by recency, interest, staleness
 - Done / Skip in session view
-- Points counter in header (increments on Done)
+- Points counter + 🔥 streak counter in header (both update on Done)
+- 🏅 achievements button opens achievements panel
 
 ### Session view detail
 
@@ -398,28 +411,27 @@ Remaining / future:
 ### Decisions made during implementation
 
 - **Single view at a time with a back button** — no persistent nav. Keeps the popup minimal and focused.
-- **Points counter in the header** — always visible, updates immediately on Done.
-- **Gamification: points counter only for now** — 10 pts per completed item. Session complete screen shows points earned that session. No visual animations yet (P1).
-
-### Open Questions
-
-- TODO: How minimal is "minimal gamification"? Any visual feedback on completion beyond the count?
+- **Points counter + streak in the header** — always visible, both update immediately on Done.
+- **Session summary screen** — on session complete shows items completed, points earned, and current streak message.
+- **Gamification: points, streak, achievements** — 10 pts per completed item; day-streak tracked in localStorage; 6 milestone achievements (first item, 5 items, 25 items, 3-day streak, 7-day streak, speed run). Toast notification fires on unlock; panel accessible via 🏅 button.
+- **In-progress resume prompt** — when a session is generated and an item is flagged in-progress, a confirm dialog asks the user to resume it or skip it for this session.
 
 ---
 
 ## 9. Testing Plan
 
-### Current test suite (136 tests, all passing)
+### Current test suite (157 tests, all passing)
 
 <!--prettier-ignore-->
 | File | Tests | What it covers |
 | --- | --- | --- |
 | `core/knapsack.test.js` | 17 | DP vs. brute-force agreement, edge cases, known optimal solutions |
 | `utils/scoring.test.js` | 17 | Each factor in isolation, output range, weight system, `scoreItems` immutability |
-| `utils/storage.test.js` | 29 | All CRUD operations, settings merge, corrupt-data resilience, `clearAll` scoping |
+| `utils/storage.test.js` | 40 | All CRUD operations, settings merge, corrupt-data resilience, `clearAll` scoping, streak logic |
 | `core/queue.test.js` | 23 | `peek`/`dequeue`/`skip`/`toArray`, skip cycling, `buildSessionQueue` sort order |
-| `content/content.test.js` | 37 | Metadata extraction (title, description, type, duration, topic), duration parsers |
+| `content/content.test.js` | 47 | Metadata extraction (title, description, type, duration, topic), duration parsers, `cleanDocumentTitle` |
 | `core/pipeline.test.js` | 13 | Full pipeline integration (scoreItems → knapsack → queue), stress tests 50–100 items |
+| `utils/achievements.test.js` | 10 | Each achievement condition, duplicate-unlock prevention, empty-stats base case |
 
 ### Not unit tested (and why)
 
@@ -481,6 +493,11 @@ P1 (post-MVP polish)
 - [x] src/options/ — options page (weight sliders, default budget, mood picker)
 - [x] Sorting/filtering UI (by topic, recency, mood) + sort by priority/interest/recency/time
 - [x] In-progress flag for interrupted items — pins item to top of queue with badge on next open
+- [x] In-progress resume prompt on session generation
+- [x] Streak tracking (daily, survives browser restarts)
+- [x] Session summary (items completed, points, streak on session end)
+- [x] Achievement system (6 milestones, toast on unlock, panel UI)
+- [x] Site compatibility — `cleanDocumentTitle` strips site-name suffixes (Wikipedia, etc.)
 - [ ] Hallway testing (general usability + ADHD-appropriateness)
 
 P2 (stretch)

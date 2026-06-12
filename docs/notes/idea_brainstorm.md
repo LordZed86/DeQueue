@@ -41,14 +41,16 @@
 
 ### Storage (`src/utils/storage.js`)
 
-- Thin wrapper around `localStorage` — nothing else in the app touches storage directly
-- Two keys: `dequeue_items` (JSON array of Items) and `dequeue_settings` (JSON object)
+- Thin wrapper around `localStorage` + `chrome.storage.session` — nothing else in the app touches storage directly
+- Four localStorage keys: `dequeue_items`, `dequeue_settings`, `dequeue_streak`, `dequeue_achievements`; one session key: `dequeue_active_session`
 - `getItems()` / `getSettings()` never throw — return safe defaults on missing or corrupt data
 - `getPendingItems()` filters out completed items — this is the entry point for the knapsack
 - `saveSettings()` merges into existing settings rather than overwriting, so callers only need to pass what changed
 - `setItems()` is private (not exported) — raw write access is too dangerous to expose
 - `clearAll()` removes only DeQueue keys, not all of localStorage
 - Default budget: 20 minutes (reflects gap-filling use case)
+- **Streak:** `getStreak()` / `updateStreak(todayStr?)` — tracks consecutive days with at least one completion; resets on missed day; `todayStr` override for testability
+- **Achievements:** `getUnlockedAchievements()` returns a `Set<string>`; `unlockAchievement(id)` adds to the set; `getTotalCompleted()` counts all completed items
 
 ### Session Queue (`src/core/queue.js`)
 
@@ -61,14 +63,16 @@
 - One-at-a-time presentation: reduces choice paralysis, which is the same problem the whole app addresses
 - The naming pun: the user literally **dequeues** from **DeQueue**
 
-### Testing (`knapsack.test.js`, `scoring.test.js`, `storage.test.js`, `queue.test.js`)
+### Testing (`knapsack.test.js`, `scoring.test.js`, `storage.test.js`, `queue.test.js`, `content.test.js`, `pipeline.test.js`, `achievements.test.js`)
 
-- 86 tests total, all passing
+- 157 tests total across 7 files, all passing
 - DP verified against brute-force on multiple inputs
 - Every edge case from the design doc covered: empty list, budget 0, all items over budget, exact fit, zero-weight filter, MAX_BUDGET cap
 - Each scoring factor tested in isolation using custom weights
 - Storage tests use jsdom environment (real `localStorage`, not a mock)
 - `beforeEach(() => clearAll())` keeps storage tests independent
+- Streak tests cover same-day no-op, consecutive increment, gap reset, multi-day chain
+- Achievement tests cover each condition, duplicate-unlock prevention, empty-stats base case
 
 ### Extension Shell (`manifest.json`, `vite.config.js`, `background.js`, `popup.html/js/css`)
 
@@ -78,7 +82,9 @@
 - Background worker is intentionally thin — only responsibility is relaying `GET_PAGE_META` between popup and content script
 - Popup has three views (queue list, add item, session) — only one visible at a time, back button nav
 - Points stored separately from item data (UI concern, not data model)
-- 10 pts per completed item; session complete screen shows session earnings
+- 10 pts per completed item; session complete screen shows items completed, points earned, and streak
+- Streak counter (🔥 N) shown in header alongside points
+- Achievements panel (🏅) accessible from header — 6 milestones, locked/unlocked display; toast fires on unlock
 
 ### Content Script (`content/content.js`, `content/content.test.js`)
 
@@ -88,7 +94,8 @@
 - Read time: `twitter:data1` (Medium) → `<article>` word count ÷ 200 wpm → `<main>` word count
 - Every extractor returns null on failure — never blocks manual entry
 - 37 new tests; jsdom limitation discovered: `window.location` is read-only, hostname-based detection tested via `og:type` instead
-- 136 tests total across 6 files, all passing (includes pipeline integration + stress tests)
+- `cleanDocumentTitle()` strips " - Site Name" / " | Site Name" suffixes from `document.title` fallback — fixes Wikipedia and similar sites
+- 157 tests total across 7 files, all passing (includes pipeline integration + stress tests)
 
 ---
 
@@ -106,6 +113,11 @@
 - ~~**Sorting/filtering UI**~~ ✓ shipped — topic/mood filters + sort by priority, interest, recency, time; count shows "X of Y" when filtered
 - ~~**Options page**~~ ✓ shipped — weight sliders (auto-normalized), default budget, default mood; gear button in popup header
 - ~~**In-progress flag**~~ ✓ shipped — interrupting a session flags the current item; it pins to the top of the queue with a badge on next open
+- ~~**In-progress resume prompt**~~ ✓ shipped — Generate Session asks "Resume [title]?" when an in-progress item exists; yes prepends it and reduces budget, no excludes it this session
+- ~~**Streak tracking**~~ ✓ shipped — daily streak in localStorage; 🔥 N in header; resets on missed day
+- ~~**Session summary**~~ ✓ shipped — items completed, points earned, streak message on session end
+- ~~**Achievement system**~~ ✓ shipped — 6 milestones, toast on unlock, 🏅 panel in header
+- ~~**Site compatibility**~~ ✓ shipped — `cleanDocumentTitle` strips site-name suffixes; tested against Wikipedia, YouTube, Reddit, Medium, news sites
 - ~~**Extension icons**~~ ✓ SVG placeholder icon in place; PNG exports pending
 
 ### P2 — Enhancements (after core works)
@@ -123,7 +135,7 @@
 - **Auto-import from Pocket / Instapaper / Readwise** — pull saved items from external reading lists via their APIs; removes manual entry entirely
 - **Calendar integration** — detect free time blocks in Google Calendar and pre-generate a session that fits the next gap
 - **Algorithm visualizer** — show the DP table filling in real time as the session is generated; great for the CS class demo and for explaining the algorithm
-- **Full reward system** — points → coins → unlockable themes, icon skins, or popup backgrounds; gives the gamification layer a feedback loop
+- ~~**Full reward system (partial)**~~ ✓ streaks + achievements shipped; unlockable skins/themes remain as a true stretch goal
 - **Auto-remove from source** — after marking done, optionally archive the item in Pocket/Instapaper/YouTube Watch Later
 - **User stats dashboard** — total items completed, minutes consumed, streaks, most-read topics; surfaces progress to counter the guilt from the unread pile
 - **Recency/staleness weight experimentation** — expose the weight imbalance discovered during testing as a user-facing "bias" slider: "prefer newer saves ←→ clear old backlog"
@@ -142,7 +154,7 @@
 ## Resolved Design Questions
 
 - ~~Popup nav — persistent bottom nav or back button?~~ → **Back button, one view at a time**
-- ~~Points counter — just a number or visual reward?~~ → **Number only for P0** (header + session complete screen); visual feedback is P1/P2
+- ~~Points counter — just a number or visual reward?~~ → **Points + streak + achievements shipped** — header shows pts and 🔥 streak; session complete screen shows summary; toast + panel for achievement unlocks
 - ~~localStorage vs. IndexedDB?~~ → **localStorage** for now; all access behind `storage.js` so migration is a single-file change
 - ~~Max budget?~~ → **60 minutes** — gap-filling use case, not day-planning
 - ~~1D vs. 2D DP table?~~ → **2D** — backtracking requires full row history
@@ -157,4 +169,4 @@
 - ability to add user tags for mood or incorporate topic into the algorithm so users can choose to pinpoint something like creative or research
 - handle long form items (greater than 60min elegantly, like make a mode for extended sessions, my thoughts are if i save a painting tutorial and im bored on a weekend and have a lot of free time this can help me weed through my long form videos or tutorial pages)
 - item organization system, if this starts to fill up it may be nice to have a directory hierarchy of some sort to manage items and display them in a more organized manner. this could be like a folder base, or a sort by type, length, topic... or something else.
-- need to test on a multitude of sites to see if it scrapes data from all the major sites
+- ~~need to test on a multitude of sites to see if it scrapes data from all the major sites~~ → **addressed** — compatibility analysis done for YouTube, Reddit, Medium, Wikipedia, news sites; `cleanDocumentTitle` fix shipped
