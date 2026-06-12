@@ -14,6 +14,7 @@ export const KEYS = {
   ITEMS: "dequeue_items",
   SETTINGS: "dequeue_settings",
   STREAK: "dequeue_streak",
+  ACHIEVEMENTS: "dequeue_achievements",
 };
 
 /** @typedef {import('../core/knapsack.js').KnapsackItem & import('./scoring.js').ScoringInput} Item */
@@ -154,6 +155,39 @@ export function saveSettings(patch) {
   localStorage.setItem(KEYS.SETTINGS, JSON.stringify({ ...current, ...patch }));
 }
 
+// ─── Achievements ─────────────────────────────────────────────────────────────
+
+/**
+ * Returns the count of all items that have been marked completed.
+ * @returns {number}
+ */
+export function getTotalCompleted() {
+  return getItems().filter((i) => i.completed).length;
+}
+
+/**
+ * Returns the set of unlocked achievement IDs.
+ * @returns {Set<string>}
+ */
+export function getUnlockedAchievements() {
+  try {
+    const raw = localStorage.getItem(KEYS.ACHIEVEMENTS);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+/**
+ * Adds an achievement ID to the unlocked set.
+ * @param {string} id
+ */
+export function unlockAchievement(id) {
+  const unlocked = getUnlockedAchievements();
+  unlocked.add(id);
+  localStorage.setItem(KEYS.ACHIEVEMENTS, JSON.stringify([...unlocked]));
+}
+
 // ─── Streak ───────────────────────────────────────────────────────────────────
 
 /**
@@ -248,4 +282,5 @@ export function clearAll() {
   localStorage.removeItem(KEYS.ITEMS);
   localStorage.removeItem(KEYS.SETTINGS);
   localStorage.removeItem(KEYS.STREAK);
+  localStorage.removeItem(KEYS.ACHIEVEMENTS);
 }

@@ -14,8 +14,21 @@
         <span class="points" id="points-display">0 pts</span>
         <span class="streak" id="streak-display" title="Day streak"></span>
       </div>
+      <button id="btn-achievements" class="btn-icon" title="Achievements" aria-label="View achievements">🏅</button>
       <button id="btn-settings" class="btn-icon" title="Settings" aria-label="Open settings">⚙</button>
     </header>
+
+    <!-- ── Toast ──────────────────────────────────────────── -->
+    <div id="achievement-toast" class="achievement-toast hidden" role="status" aria-live="polite"></div>
+
+    <!-- ── Achievements Panel ─────────────────────────────── -->
+    <div id="achievements-panel" class="achievements-panel hidden">
+      <div class="achievements-panel-header">
+        <span>Achievements</span>
+        <button id="btn-close-achievements" class="btn-icon" aria-label="Close achievements">✕</button>
+      </div>
+      <ul id="achievements-list" class="achievements-list"></ul>
+    </div>
 
     <!-- ── Queue View ─────────────────────────────────────── -->
     <section id="view-queue" class="view">

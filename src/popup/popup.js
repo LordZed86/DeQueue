@@ -1,4 +1,5 @@
-import { getItems, getPendingItems, saveItem, deleteItem, markCompleted, markInProgress, clearInProgress, getSettings, saveSettings, saveSession, loadSession, clearSession, getStreak, updateStreak } from "../utils/storage.js";
+import { getItems, getPendingItems, saveItem, deleteItem, markCompleted, markInProgress, clearInProgress, getSettings, saveSettings, saveSession, loadSession, clearSession, getStreak, updateStreak, getTotalCompleted, getUnlockedAchievements, unlockAchievement } from "../utils/storage.js";
+import { ACHIEVEMENTS, checkAchievements } from "../utils/achievements.js";
 import { scoreItems } from "../utils/scoring.js";
 import { knapsack } from "../core/knapsack.js";
 import { SessionQueue, buildSessionQueue } from "../core/queue.js";
@@ -7,6 +8,7 @@ import { SessionQueue, buildSessionQueue } from "../core/queue.js";
 let sessionQueue = null;
 let sessionPointsEarned = 0;
 let sessionItemsCompleted = 0;
+let sessionStartTime = null;
 let filterTopic = "";
 let filterMood = "";
 let sortBy = "score";
@@ -25,6 +27,11 @@ const budgetInput = document.getElementById("budget-input");
 const moodSelect = document.getElementById("mood-select");
 
 const btnSettings = document.getElementById("btn-settings");
+const btnAchievements = document.getElementById("btn-achievements");
+const btnCloseAchievements = document.getElementById("btn-close-achievements");
+const achievementsPanel = document.getElementById("achievements-panel");
+const achievementsList = document.getElementById("achievements-list");
+const achievementToast = document.getElementById("achievement-toast");
 
 const filterTopicEl = document.getElementById("filter-topic");
 const filterMoodEl = document.getElementById("filter-mood");
@@ -80,6 +87,55 @@ function renderPoints() {
   const { count } = getStreak();
   streakDisplay.textContent = count > 0 ? `🔥 ${count}` : "";
 }
+
+// ── Achievements ───────────────────────────────────────────
+let toastTimer = null;
+
+function showToast(achievement) {
+  achievementToast.textContent = `${achievement.emoji} Achievement unlocked: ${achievement.name}`;
+  achievementToast.classList.remove("hidden");
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => achievementToast.classList.add("hidden"), 3500);
+}
+
+function checkAndUnlock() {
+  const stats = {
+    totalCompleted: getTotalCompleted(),
+    streakCount: getStreak().count,
+    sessionDurationMs: sessionStartTime ? Date.now() - sessionStartTime : null,
+    sessionItemsCompleted,
+  };
+  const unlocked = getUnlockedAchievements();
+  const newlyUnlocked = checkAchievements(stats, unlocked);
+  for (const a of newlyUnlocked) {
+    unlockAchievement(a.id);
+    showToast(a);
+  }
+}
+
+function renderAchievementsPanel() {
+  const unlocked = getUnlockedAchievements();
+  achievementsList.innerHTML = "";
+  for (const a of ACHIEVEMENTS) {
+    const li = document.createElement("li");
+    li.className = "achievement-item" + (unlocked.has(a.id) ? " achievement-item--unlocked" : " achievement-item--locked");
+    li.innerHTML = `<span class="achievement-emoji">${unlocked.has(a.id) ? a.emoji : "🔒"}</span>
+      <div>
+        <div class="achievement-name">${escHtml(a.name)}</div>
+        <div class="achievement-desc">${escHtml(a.desc)}</div>
+      </div>`;
+    achievementsList.appendChild(li);
+  }
+}
+
+btnAchievements.addEventListener("click", () => {
+  renderAchievementsPanel();
+  achievementsPanel.classList.toggle("hidden");
+});
+
+btnCloseAchievements.addEventListener("click", () => {
+  achievementsPanel.classList.add("hidden");
+});
 
 // ── Queue view ─────────────────────────────────────────────
 function populateTopicFilter(items) {
@@ -211,6 +267,7 @@ async function generateSession() {
   sessionQueue = buildSessionQueue(selected);
   sessionPointsEarned = 0;
   sessionItemsCompleted = 0;
+  sessionStartTime = Date.now();
   await persistSession();
   showView(viewSession);
   renderSessionCard();
@@ -374,6 +431,7 @@ btnDone.addEventListener("click", async () => {
     addPoints(10);
     sessionPointsEarned += 10;
     sessionItemsCompleted += 1;
+    checkAndUnlock();
   }
   if (sessionQueue.isEmpty) {
     await clearSession();
