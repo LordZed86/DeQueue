@@ -11,6 +11,8 @@ import {
   getSettings,
   saveSettings,
   clearAll,
+  getStreak,
+  updateStreak,
   KEYS,
 } from "./storage.js";
 
@@ -256,5 +258,49 @@ describe("clearAll", () => {
     localStorage.setItem("some-other-key", "value");
     clearAll();
     expect(localStorage.getItem("some-other-key")).toBe("value");
+  });
+});
+
+// ─── streak ───────────────────────────────────────────────────────────────────
+
+describe("getStreak", () => {
+  it("returns count 0 and null lastDate when nothing stored", () => {
+    const s = getStreak();
+    expect(s.count).toBe(0);
+    expect(s.lastDate).toBeNull();
+  });
+});
+
+describe("updateStreak", () => {
+  it("starts streak at 1 on first completion", () => {
+    const s = updateStreak("2026-06-12");
+    expect(s.count).toBe(1);
+    expect(s.lastDate).toBe("2026-06-12");
+  });
+
+  it("increments streak when called on consecutive days", () => {
+    updateStreak("2026-06-12");
+    const s = updateStreak("2026-06-13");
+    expect(s.count).toBe(2);
+  });
+
+  it("does not double-count same day", () => {
+    updateStreak("2026-06-12");
+    const s = updateStreak("2026-06-12");
+    expect(s.count).toBe(1);
+  });
+
+  it("resets to 1 when a day is missed", () => {
+    updateStreak("2026-06-10");
+    const s = updateStreak("2026-06-12"); // skipped the 11th
+    expect(s.count).toBe(1);
+  });
+
+  it("builds a multi-day streak correctly", () => {
+    updateStreak("2026-06-10");
+    updateStreak("2026-06-11");
+    updateStreak("2026-06-12");
+    const s = updateStreak("2026-06-13");
+    expect(s.count).toBe(4);
   });
 });

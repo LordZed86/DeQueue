@@ -70,12 +70,24 @@ header {
   letter-spacing: 0.5px;
 }
 
+.header-stats {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  justify-content: flex-end;
+}
+
 .points {
   font-size: 12px;
   font-weight: 600;
   color: var(--color-star-on);
-  flex: 1;
-  text-align: right;
+}
+
+.streak {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
 }
 
 .btn-icon {
@@ -446,8 +458,21 @@ select:focus {
   margin-bottom: 6px;
 }
 
+.complete-items {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-bottom: 4px;
+}
+
 .complete-points {
   font-size: 13px;
   color: var(--color-star-on);
+  margin-bottom: 4px;
+}
+
+.complete-streak {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-accent);
   margin-bottom: 20px;
 }

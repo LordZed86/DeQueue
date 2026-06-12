@@ -13,6 +13,7 @@
 export const KEYS = {
   ITEMS: "dequeue_items",
   SETTINGS: "dequeue_settings",
+  STREAK: "dequeue_streak",
 };
 
 /** @typedef {import('../core/knapsack.js').KnapsackItem & import('./scoring.js').ScoringInput} Item */
@@ -153,6 +154,48 @@ export function saveSettings(patch) {
   localStorage.setItem(KEYS.SETTINGS, JSON.stringify({ ...current, ...patch }));
 }
 
+// ─── Streak ───────────────────────────────────────────────────────────────────
+
+/**
+ * @typedef {Object} StreakData
+ * @property {number} count            - Current consecutive-day streak
+ * @property {string|null} lastDate    - ISO date string "YYYY-MM-DD" of last completion
+ */
+
+/** @returns {StreakData} */
+export function getStreak() {
+  try {
+    const raw = localStorage.getItem(KEYS.STREAK);
+    return raw ? JSON.parse(raw) : { count: 0, lastDate: null };
+  } catch {
+    return { count: 0, lastDate: null };
+  }
+}
+
+/**
+ * Call once per completed item. Increments the streak if today is the first
+ * completion of the day, resets to 1 if a day was missed.
+ * @param {string} [todayStr] - "YYYY-MM-DD", defaults to today. Override in tests.
+ * @returns {StreakData} updated streak
+ */
+export function updateStreak(todayStr) {
+  const today = todayStr ?? new Date().toISOString().slice(0, 10);
+  const streak = getStreak();
+
+  if (streak.lastDate === today) return streak; // already counted today
+
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().slice(0, 10);
+
+  const updated = {
+    count: streak.lastDate === yesterdayStr ? streak.count + 1 : 1,
+    lastDate: today,
+  };
+  localStorage.setItem(KEYS.STREAK, JSON.stringify(updated));
+  return updated;
+}
+
 // ─── Session state ────────────────────────────────────────────────────────────
 // Stored in chrome.storage.session so it survives popup closes and tab switches
 // but is automatically cleared when the browser restarts.
@@ -204,4 +247,5 @@ export function clearSession() {
 export function clearAll() {
   localStorage.removeItem(KEYS.ITEMS);
   localStorage.removeItem(KEYS.SETTINGS);
+  localStorage.removeItem(KEYS.STREAK);
 }

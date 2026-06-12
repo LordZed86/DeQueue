@@ -10,7 +10,10 @@
     <!-- ── Header ─────────────────────────────────────────── -->
     <header>
       <span class="logo">DeQueue</span>
-      <span class="points" id="points-display">0 pts</span>
+      <div class="header-stats">
+        <span class="points" id="points-display">0 pts</span>
+        <span class="streak" id="streak-display" title="Day streak"></span>
+      </div>
       <button id="btn-settings" class="btn-icon" title="Settings" aria-label="Open settings">⚙</button>
     </header>
 
@@ -144,7 +147,9 @@
       <div id="session-complete" class="session-complete hidden">
         <p class="complete-emoji">🎉</p>
         <p class="complete-msg">Session complete!</p>
+        <p id="complete-items" class="complete-items"></p>
         <p id="complete-points" class="complete-points"></p>
+        <p id="complete-streak" class="complete-streak"></p>
         <button id="btn-session-done" class="btn-primary">Back to queue</button>
       </div>
 

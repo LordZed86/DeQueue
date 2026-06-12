@@ -1,4 +1,4 @@
-import { getItems, getPendingItems, saveItem, deleteItem, markCompleted, markInProgress, clearInProgress, getSettings, saveSettings, saveSession, loadSession, clearSession } from "../utils/storage.js";
+import { getItems, getPendingItems, saveItem, deleteItem, markCompleted, markInProgress, clearInProgress, getSettings, saveSettings, saveSession, loadSession, clearSession, getStreak, updateStreak } from "../utils/storage.js";
 import { scoreItems } from "../utils/scoring.js";
 import { knapsack } from "../core/knapsack.js";
 import { SessionQueue, buildSessionQueue } from "../core/queue.js";
@@ -6,6 +6,7 @@ import { SessionQueue, buildSessionQueue } from "../core/queue.js";
 // ── State ──────────────────────────────────────────────────
 let sessionQueue = null;
 let sessionPointsEarned = 0;
+let sessionItemsCompleted = 0;
 let filterTopic = "";
 let filterMood = "";
 let sortBy = "score";
@@ -16,6 +17,7 @@ const viewAdd = document.getElementById("view-add");
 const viewSession = document.getElementById("view-session");
 
 const pointsDisplay = document.getElementById("points-display");
+const streakDisplay = document.getElementById("streak-display");
 const itemList = document.getElementById("item-list");
 const itemCount = document.getElementById("item-count");
 const emptyState = document.getElementById("empty-state");
@@ -44,7 +46,9 @@ const cardTime = document.getElementById("card-time");
 const cardTopic = document.getElementById("card-topic");
 const sessionComplete = document.getElementById("session-complete");
 const sessionActions = document.getElementById("session-actions");
+const completeItems = document.getElementById("complete-items");
 const completePoints = document.getElementById("complete-points");
+const completeStreak = document.getElementById("complete-streak");
 const btnDone = document.getElementById("btn-done");
 const btnSkip = document.getElementById("btn-skip");
 const btnSessionDone = document.getElementById("btn-session-done");
@@ -73,6 +77,8 @@ function addPoints(n) {
 
 function renderPoints() {
   pointsDisplay.textContent = `${getPoints()} pts`;
+  const { count } = getStreak();
+  streakDisplay.textContent = count > 0 ? `🔥 ${count}` : "";
 }
 
 // ── Queue view ─────────────────────────────────────────────
@@ -177,15 +183,34 @@ async function generateSession() {
   const pending = getPendingItems();
   if (pending.length === 0) return;
 
-  const scored = scoreItems(pending, { currentMood: mood });
-  const result = knapsack(budget, scored);
+  const inProgressItem = pending.find((i) => i.inProgress) ?? null;
+  let resume = false;
 
-  if (result.selected.length === 0) {
+  if (inProgressItem) {
+    resume = confirm(`Resume "${inProgressItem.title}"?`);
+  }
+
+  const poolItems = inProgressItem
+    ? pending.filter((i) => i.id !== inProgressItem.id)
+    : pending;
+  const remainingBudget = resume
+    ? Math.max(0, budget - inProgressItem.timeEstimate)
+    : budget;
+
+  const scored = scoreItems(poolItems, { currentMood: mood });
+  const result = knapsack(remainingBudget, scored);
+
+  const selected = resume
+    ? [inProgressItem, ...result.selected]
+    : result.selected;
+
+  if (selected.length === 0) {
     return;
   }
 
-  sessionQueue = buildSessionQueue(result.selected);
+  sessionQueue = buildSessionQueue(selected);
   sessionPointsEarned = 0;
+  sessionItemsCompleted = 0;
   await persistSession();
   showView(viewSession);
   renderSessionCard();
@@ -197,9 +222,14 @@ function renderSessionCard() {
     sessionCard.classList.add("hidden");
     sessionActions.classList.add("hidden");
     sessionComplete.classList.remove("hidden");
+    completeItems.textContent = sessionItemsCompleted > 0
+      ? `${sessionItemsCompleted} item${sessionItemsCompleted !== 1 ? "s" : ""} completed`
+      : "";
     completePoints.textContent = sessionPointsEarned > 0
       ? `+${sessionPointsEarned} points earned`
       : "";
+    const { count } = getStreak();
+    completeStreak.textContent = count > 1 ? `🔥 ${count} day streak!` : count === 1 ? `🔥 Streak started!` : "";
     return;
   }
 
@@ -340,8 +370,10 @@ btnDone.addEventListener("click", async () => {
   if (item) {
     markCompleted(item.id);
     clearInProgress();
+    updateStreak();
     addPoints(10);
     sessionPointsEarned += 10;
+    sessionItemsCompleted += 1;
   }
   if (sessionQueue.isEmpty) {
     await clearSession();

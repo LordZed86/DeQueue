@@ -31,8 +31,14 @@ function extractTitle() {
   return (
     metaContent("og:title") ??
     metaContent("twitter:title") ??
-    (document.title?.trim() || null)
+    cleanDocumentTitle(document.title)
   );
+}
+
+/** Strips common " - Site Name" / " | Site Name" suffixes from document.title */
+function cleanDocumentTitle(raw) {
+  if (!raw?.trim()) return null;
+  return raw.trim().replace(/\s*[-|–—]\s*[^-|–—]{3,}$/, "").trim() || raw.trim();
 }
 
 // ── Description ────────────────────────────────────────────
@@ -205,4 +211,5 @@ export {
   extractTopic,
   parseDurationString,
   parseIsoDuration,
+  cleanDocumentTitle,
 };

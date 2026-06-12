@@ -10,6 +10,7 @@ import {
   parseDurationString,
   parseIsoDuration,
   extractPageMeta,
+  cleanDocumentTitle,
 } from "./content.js";
 
 // ── Helpers ────────────────────────────────────────────────
@@ -103,13 +104,38 @@ describe("extractTitle", () => {
     expect(extractTitle()).toBe("Twitter Title");
   });
 
-  it("falls back to document.title as last resort", () => {
-    document.title = "  Page Title  ";
-    expect(extractTitle()).toBe("Page Title");
+  it("falls back to document.title as last resort, stripped of site suffix", () => {
+    document.title = "Some Article - Wikipedia";
+    expect(extractTitle()).toBe("Some Article");
   });
 
   it("returns null when nothing is present", () => {
     expect(extractTitle()).toBeNull();
+  });
+});
+
+// ── cleanDocumentTitle ─────────────────────────────────────
+
+describe("cleanDocumentTitle", () => {
+  it("strips ' - Site Name' suffix", () => {
+    expect(cleanDocumentTitle("Some Article - Wikipedia")).toBe("Some Article");
+  });
+
+  it("strips ' | Site Name' suffix", () => {
+    expect(cleanDocumentTitle("Breaking News | The Guardian")).toBe("Breaking News");
+  });
+
+  it("strips ' – Site Name' (en dash) suffix", () => {
+    expect(cleanDocumentTitle("My Post – Medium")).toBe("My Post");
+  });
+
+  it("leaves titles with no suffix untouched", () => {
+    expect(cleanDocumentTitle("Just a Plain Title")).toBe("Just a Plain Title");
+  });
+
+  it("returns null for empty/null input", () => {
+    expect(cleanDocumentTitle("")).toBeNull();
+    expect(cleanDocumentTitle(null)).toBeNull();
   });
 });
 
