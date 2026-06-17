@@ -2,7 +2,7 @@
 
 ![Tests](https://github.com/LordZed86/CS_398_Final-Project/actions/workflows/test.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-GPL--3.0-blue)
-![Version](https://img.shields.io/badge/version-0.1.0-informational)
+![Version](https://img.shields.io/badge/version-1.0.0-informational)
 ![JavaScript](https://img.shields.io/badge/JavaScript-ES2022-yellow?logo=javascript)
 ![Manifest V3](https://img.shields.io/badge/WebExtensions-MV3-brightgreen?logo=googlechrome)
 ![Tests](https://img.shields.io/badge/tests-157%20passing-brightgreen)
@@ -139,6 +139,10 @@ src/
 ## Running locally
 
 > **Note:** This is a browser extension — it cannot run in Codespaces, StackBlitz, or any other cloud-based environment. It must be loaded into a local browser using developer mode.
+
+**Don't want to build from source?** Download the latest release zip from the [Releases page](../../releases), unzip it, and load the `dist/` folder directly in your browser. Skip to step 3 below.
+
+---
 
 **Prerequisites:** Node.js 18+, Chrome, Brave, or Firefox
 
