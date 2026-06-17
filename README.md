@@ -237,3 +237,4 @@ See [design document § Architecture Overview](docs/design_documentation/DeQueue
 | [Dev Log](docs/notes/dev_log.md) | Chronological record of decisions and bugs as the project was built |
 | [Idea Brainstorm](docs/notes/idea_brainstorm.md) | Original brainstorm, P0/P1/P2 feature tracking, and hallway testing notes |
 | [Reflection Notes](docs/notes/reflection_notes.md) | Notes for the final reflection paper and project defense |
+| [AI Use Log](docs/notes/ai_use_log.md) | Transparent record of how AI assistance was used, what it contributed, and where human judgment was required |
