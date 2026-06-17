@@ -20,6 +20,34 @@ Built for CS 398 — Algorithmic Problem Solving.
 - DeQueue selects the best items using a dynamic programming knapsack algorithm
 - Items are presented one at a time — Done marks it complete, Skip cycles it to the back
 - Priority scoring weighs interest rating, recency, staleness, and current mood
+- Streak tracking keeps a running count of your daily session completions
+- Achievements unlock as you hit milestones and surface as toast notifications
+- Options page lets you configure default time budget and scoring weights
+
+---
+
+## Planned features
+
+### P2 — Near-term
+
+- **JSON export / import** — back up your queue to a file and restore it on a new browser or after a reset
+- **Topic clustering** — auto-group items by topic using a graph/similarity approach; this is where graph theory from the original design comes back in
+- **Mood preset rework** — replace the free-text mood tag with a fixed set (e.g. "focus", "low-energy", "curious", "quick") for easier matching and better scoring
+- **Scoring weight tuning** — expose the recency vs. staleness tradeoff as a user-facing bias slider so users can tune "prefer new saves ↔ clear old backlog"
+- **Safari support** — WebExtensions API is largely compatible; needs testing and a possible manifest tweak
+- **Article / video only mode** — filter sessions to one content type (e.g. no audio at work)
+- **Long-form mode** — handle items over 60 minutes; useful for painting tutorials or long documentaries on a free afternoon
+
+### P3 — Stretch
+
+- **Auto-import** — pull saved items from Pocket, Instapaper, Readwise, or YouTube Watch Later
+- **Auto-remove from source** — after marking an item done, optionally archive it in Pocket, Instapaper, or YouTube Watch Later so your external lists stay clean too
+- **Calendar integration** — detect free time blocks in Google Calendar and pre-generate a session that fits the next gap
+- **Item organization** — folder hierarchy or directory view for large queues
+- **Algorithm visualizer** — watch the DP table fill in real time as a session generates; useful for demos and explaining the algorithm
+- **User stats dashboard** — total items completed, minutes consumed, streaks, most-read topics; surfaces progress to counter the guilt from a growing backlog
+- **Weight experimentation UI** — expose recency, staleness, and other scoring factors as tunable sliders so users can discover what weighting pattern actually matches how their brain prioritizes
+- **Long-form library** — a separate space for items over 60 minutes (tutorials, documentaries, deep-dives) that sits outside the main knapsack; when you have a big block of free time, DeQueue surfaces what's waiting there so you don't have to make that call yourself
 
 ---
 
