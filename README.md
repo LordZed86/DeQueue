@@ -28,7 +28,7 @@ Built for CS 398 — Algorithmic Problem Solving.
 
 ## Algorithm
 
-DeQueue's session generator is a **0/1 knapsack** solved with bottom-up dynamic programming — the core algorithmic idea the whole project is built around.
+DeQueue's session generator is a **0/1 knapsack** solved with bottom-up dynamic programming — the core algorithmic idea the whole project is built around. For full implementation details see the [design document § Core Algorithm](docs/design_documentation/DeQueue.md#3-core-algorithm).
 
 ### Problem mapping
 
@@ -63,7 +63,7 @@ w=W     │  0  │ ... │ ... │best │
         └─────┴─────┴─────┴─────┘
 ```
 
-The table is 2D (`dp[i][w]`) rather than the space-optimized 1D rolling array — backtracking to recover *which* items were selected (not just the best total value) requires the full row history. With a 60-minute cap the table stays at most `n × 60` cells, so memory is not a concern.
+The table is 2D (`dp[i][w]`) rather than the space-optimized 1D rolling array — backtracking to recover _which_ items were selected (not just the best total value) requires the full row history. With a 60-minute cap the table stays at most `n × 60` cells, so memory is not a concern.
 
 ### Complexity
 
@@ -136,20 +136,6 @@ src/
 
 ---
 
-## Algorithm
-
-The session generator is a classic **0/1 knapsack** solved with bottom-up dynamic programming.
-
-- **Capacity** = user's time budget in minutes (max 60)
-- **Weight** = item's estimated time in whole minutes
-- **Value** = priority score from `scoring.js`
-
-The DP table is 2D (`dp[i][w]`) rather than the space-optimized 1D rolling array because backtracking to recover the selected set requires the full row history. With a 60-minute cap the table stays small, so memory is not a concern.
-
-A brute-force exhaustive search (`knapsackBruteForce`) is exported alongside the DP solution and used in tests to verify correctness on small inputs.
-
----
-
 ## Running locally
 
 > **Note:** This is a browser extension — it cannot run in Codespaces, StackBlitz, or any other cloud-based environment. It must be loaded into a local browser using developer mode.
@@ -215,17 +201,17 @@ npm run test:watch
 
 ## Tests
 
-157 tests across 7 files, all passing.
+157 tests across 7 files, all passing. See [design document § Testing Plan](docs/design_documentation/DeQueue.md#9-testing-plan) for rationale on what is and isn't unit tested.
 
-| File                          | Tests | What it covers                                                                    |
-| ----------------------------- | ----- | --------------------------------------------------------------------------------- |
-| `core/knapsack.test.js`       | 17    | DP vs. brute-force agreement, edge cases, known optimal solutions                 |
-| `utils/scoring.test.js`       | 17    | Each scoring factor in isolation, output range, weight system, immutability       |
-| `utils/storage.test.js`       | 35    | All CRUD operations, settings merge, corrupt-data resilience, clearAll scoping    |
-| `core/queue.test.js`          | 23    | peek/dequeue/skip/toArray, skip cycling, buildSessionQueue sort order             |
-| `content/content.test.js`     | 42    | Metadata extraction (title, description, type, duration, topic), duration parsers |
-| `core/pipeline.test.js`       | 13    | Full pipeline integration, stress tests at 50–100 items, performance              |
-| `utils/achievements.test.js`  | 10    | Achievement unlock conditions, duplicate prevention, empty-stats base case        |
+| File                         | Tests | What it covers                                                                    |
+| ---------------------------- | ----- | --------------------------------------------------------------------------------- |
+| `core/knapsack.test.js`      | 17    | DP vs. brute-force agreement, edge cases, known optimal solutions                 |
+| `utils/scoring.test.js`      | 17    | Each scoring factor in isolation, output range, weight system, immutability       |
+| `utils/storage.test.js`      | 35    | All CRUD operations, settings merge, corrupt-data resilience, clearAll scoping    |
+| `core/queue.test.js`         | 23    | peek/dequeue/skip/toArray, skip cycling, buildSessionQueue sort order             |
+| `content/content.test.js`    | 42    | Metadata extraction (title, description, type, duration, topic), duration parsers |
+| `core/pipeline.test.js`      | 13    | Full pipeline integration, stress tests at 50–100 items, performance              |
+| `utils/achievements.test.js` | 10    | Achievement unlock conditions, duplicate prevention, empty-stats base case        |
 
 ---
 
@@ -237,3 +223,17 @@ npm run test:watch
 - **Storage:** `localStorage` (items, settings, streak, achievements) + `chrome.storage.session` (active session state)
 - **Tests:** Vitest, jsdom
 - **Linting / formatting:** ESLint, Prettier
+
+See [design document § Architecture Overview](docs/design_documentation/DeQueue.md#1-architecture-overview) for a full breakdown of the extension components and data flow.
+
+---
+
+## Documentation
+
+| Document | Description |
+| -------- | ----------- |
+| [Design Document](docs/design_documentation/DeQueue.md) | Architecture, data model, algorithm, storage, UI/UX, testing plan, and decisions log |
+| [Project Proposal](docs/proposal.md) | Original project proposal submitted for CS 398 |
+| [Dev Log](docs/notes/dev_log.md) | Chronological record of decisions and bugs as the project was built |
+| [Idea Brainstorm](docs/notes/idea_brainstorm.md) | Original brainstorm, P0/P1/P2 feature tracking, and hallway testing notes |
+| [Reflection Notes](docs/notes/reflection_notes.md) | Notes for the final reflection paper and project defense |
