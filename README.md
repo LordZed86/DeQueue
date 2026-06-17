@@ -165,23 +165,25 @@ npm run test:watch
 
 ## Tests
 
-136 tests across 6 files, all passing.
+157 tests across 7 files, all passing.
 
-| File                      | Tests | What it covers                                                                    |
-| ------------------------- | ----- | --------------------------------------------------------------------------------- |
-| `core/knapsack.test.js`   | 17    | DP vs. brute-force agreement, edge cases, known optimal solutions                 |
-| `utils/scoring.test.js`   | 17    | Each scoring factor in isolation, output range, weight system, immutability       |
-| `utils/storage.test.js`   | 29    | All CRUD operations, settings merge, corrupt-data resilience, clearAll scoping    |
-| `core/queue.test.js`      | 23    | peek/dequeue/skip/toArray, skip cycling, buildSessionQueue sort order             |
-| `content/content.test.js` | 37    | Metadata extraction (title, description, type, duration, topic), duration parsers |
-| `core/pipeline.test.js`   | 13    | Full pipeline integration, stress tests at 50–100 items, performance              |
+| File                          | Tests | What it covers                                                                    |
+| ----------------------------- | ----- | --------------------------------------------------------------------------------- |
+| `core/knapsack.test.js`       | 17    | DP vs. brute-force agreement, edge cases, known optimal solutions                 |
+| `utils/scoring.test.js`       | 17    | Each scoring factor in isolation, output range, weight system, immutability       |
+| `utils/storage.test.js`       | 35    | All CRUD operations, settings merge, corrupt-data resilience, clearAll scoping    |
+| `core/queue.test.js`          | 23    | peek/dequeue/skip/toArray, skip cycling, buildSessionQueue sort order             |
+| `content/content.test.js`     | 42    | Metadata extraction (title, description, type, duration, topic), duration parsers |
+| `core/pipeline.test.js`       | 13    | Full pipeline integration, stress tests at 50–100 items, performance              |
+| `utils/achievements.test.js`  | 10    | Achievement unlock conditions, duplicate prevention, empty-stats base case        |
 
 ---
 
 ## Tech
 
 - **Runtime:** Browser extension (WebExtensions MV3), Firefox + Chrome/Brave
+- **Algorithm:** 0/1 knapsack via bottom-up dynamic programming (ES2022, no dependencies)
 - **Build:** Vite + vite-plugin-web-extension
-- **Storage:** localStorage (item/settings data) + `chrome.storage.session` (active session state)
+- **Storage:** `localStorage` (items, settings, streak, achievements) + `chrome.storage.session` (active session state)
 - **Tests:** Vitest, jsdom
-- **Linting/formatting:** ESLint, Prettier
+- **Linting / formatting:** ESLint, Prettier
