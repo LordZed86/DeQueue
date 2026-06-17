@@ -2,7 +2,7 @@
 
 **Author:** Kellen Jones
 **Course:** CS 398 — Algorithmic Problem Solving
-**Last Updated:** 2026-06-12
+**Last Updated:** 2026-06-16
 
 ---
 
@@ -427,9 +427,9 @@ Remaining / future:
 | --- | --- | --- |
 | `core/knapsack.test.js` | 17 | DP vs. brute-force agreement, edge cases, known optimal solutions |
 | `utils/scoring.test.js` | 17 | Each factor in isolation, output range, weight system, `scoreItems` immutability |
-| `utils/storage.test.js` | 40 | All CRUD operations, settings merge, corrupt-data resilience, `clearAll` scoping, streak logic |
+| `utils/storage.test.js` | 35 | All CRUD operations, settings merge, corrupt-data resilience, `clearAll` scoping, streak logic |
 | `core/queue.test.js` | 23 | `peek`/`dequeue`/`skip`/`toArray`, skip cycling, `buildSessionQueue` sort order |
-| `content/content.test.js` | 47 | Metadata extraction (title, description, type, duration, topic), duration parsers, `cleanDocumentTitle` |
+| `content/content.test.js` | 42 | Metadata extraction (title, description, type, duration, topic), duration parsers, `cleanDocumentTitle` |
 | `core/pipeline.test.js` | 13 | Full pipeline integration (scoreItems → knapsack → queue), stress tests 50–100 items |
 | `utils/achievements.test.js` | 10 | Each achievement condition, duplicate-unlock prevention, empty-stats base case |
 
@@ -457,19 +457,20 @@ Remaining / future:
 | # | Question | Status |
 | --- | --- | --- |
 | 1 | Safari support — P2 stretch or cut entirely? | **Decided: P2 stretch** |
-| 2 | Single topic tag vs. array of tags | Open |
-| 3 | Value function weights — hardcoded defaults or user-configurable? | **Decided: user-configurable via options page weight sliders** |
-| 4 | Decay curve shape (linear vs. logarithmic) | Open |
-| 5 | Max supported time budget | **Decided: 60 minutes** |
-| 6 | localStorage vs. IndexedDB to start | **Decided: localStorage** |
-| 7 | Export/import of item data | Open (P2) |
-| 8 | YouTube-specific scraper — worth maintaining? | Open |
-| 9 | Gamification — points counter only, or visual feedback too? | **Decided: counter only for P0** (10 pts/item, shown in header and session complete screen) |
-| 10 | Recency vs. staleness weight asymmetry — which direction should the default favor? | Open |
-| 11 | DP table approach — 1D rolling array vs. 2D | **Decided: 2D** (backtracking requires full row history) |
-| 12 | Session presentation — one at a time vs. full list | **Decided: one at a time** (reduces choice paralysis) |
-| 13 | Skip behavior — discard or cycle to back? | **Decided: cycle to back** (item stays available this session) |
-| 14 | Session state storage — localStorage vs. chrome.storage.session | **Decided: chrome.storage.session** — right lifecycle: survives popup close/tab switch, auto-clears on browser restart. localStorage would persist stale sessions across restarts. |
+| 2 | Single topic tag vs. array of tags | Open — array is more flexible but complicates filter UI; deferred to P2 |
+| 3 | Value function weights — hardcoded defaults or user-configurable? | **Decided: user-configurable via options page weight sliders with auto-normalization** |
+| 4 | Decay curve shape (linear vs. logarithmic) | Open — logarithmic would age items more gently; deferred to P2 weight experimentation UI |
+| 5 | Max supported time budget | **Decided: 60 minutes** — gap-filling use case, not day-planning |
+| 6 | localStorage vs. IndexedDB to start | **Decided: localStorage** — all access behind `storage.js` so migration is a single-file change |
+| 7 | Export/import of item data | **Decided: P2** — JSON export/import planned; format TBD (plain JSON or Pocket/Instapaper compatible) |
+| 8 | YouTube-specific scraper — worth maintaining? | Open — implemented as best-effort; falls back to manual if YouTube's DOM changes |
+| 9 | Gamification — points counter only, or visual feedback too? | **Decided: points + streak + achievements shipped** — 10 pts/item, 🔥 streak in header, 6 milestone achievements with toast notifications and panel UI |
+| 10 | Recency vs. staleness weight asymmetry — which direction should the default favor? | Open — equal weights cancel out (see scoring section); default currently asymmetric but not tuned; P2 slider planned |
+| 11 | DP table approach — 1D rolling array vs. 2D | **Decided: 2D** — backtracking requires full row history to recover which items were selected |
+| 12 | Session presentation — one at a time vs. full list | **Decided: one at a time** — reduces choice paralysis, which is the same problem the whole app addresses |
+| 13 | Skip behavior — discard or cycle to back? | **Decided: cycle to back** — item stays available this session, never forces the user into a dead end |
+| 14 | Session state storage — localStorage vs. chrome.storage.session | **Decided: chrome.storage.session** — survives popup close/tab switch, auto-clears on browser restart; localStorage would persist stale sessions |
+| 15 | Long-form items (>60 min) — force into algorithm or separate space? | **Decided: separate long-form library (P2)** — items outside the knapsack presented when the user has open-ended time; removes decision anxiety without breaking the budget model |
 
 ## TODO Checklist
 
@@ -500,6 +501,23 @@ P1 (post-MVP polish)
 - [x] Site compatibility — `cleanDocumentTitle` strips site-name suffixes (Wikipedia, etc.)
 - [ ] Hallway testing (general usability + ADHD-appropriateness)
 
-P2 (stretch)
+P2 (near-term enhancements)
 
-- [ ] Auto-fill from reading lists/YouTube, calendar integration, topic clustering, algorithm visualizer, stats
+- [ ] JSON export / import — backup and restore queue across browsers
+- [ ] Topic clustering — graph/similarity-based auto-grouping; graph theory re-enters here
+- [ ] Mood preset rework — fixed set (focus, low-energy, curious, quick) instead of free-text tag
+- [ ] Scoring weight tuning — user-facing bias slider for recency vs. staleness tradeoff
+- [ ] Safari support — WebExtensions API largely compatible; needs testing + possible manifest tweak
+- [ ] Article / video only mode — filter sessions by content type (e.g. no audio at work)
+- [ ] Long-form mode — separate library for items >60 min; surfaces them when user has open-ended time
+
+P3 (stretch)
+
+- [ ] Auto-import — Pocket, Instapaper, Readwise, YouTube Watch Later
+- [ ] Auto-remove from source — archive in external list after marking done
+- [ ] Calendar integration — detect free time blocks in Google Calendar, pre-generate a fitting session
+- [ ] Item organization — folder hierarchy or directory view for large queues
+- [ ] Algorithm visualizer — DP table filling in real time; useful for demos and CS class explanation
+- [ ] User stats dashboard — completions, minutes consumed, streaks, top topics
+- [ ] Weight experimentation UI — tunable sliders for all scoring factors to help users find their pattern
+- [ ] Long-form library — dedicated space for tutorials, documentaries, deep-dives outside the main knapsack
