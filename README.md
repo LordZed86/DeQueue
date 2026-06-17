@@ -26,6 +26,56 @@ Built for CS 398 — Algorithmic Problem Solving.
 
 ---
 
+## Algorithm
+
+DeQueue's session generator is a **0/1 knapsack** solved with bottom-up dynamic programming — the core algorithmic idea the whole project is built around.
+
+### Problem mapping
+
+| Knapsack concept | DeQueue meaning                          |
+| ---------------- | ---------------------------------------- |
+| Capacity         | Your time budget in minutes (max 60)     |
+| Item weight      | Estimated read/watch time in minutes     |
+| Item value       | Priority score from `scoring.js`         |
+| Selected set     | The items DeQueue picks for your session |
+
+### Priority scoring
+
+Before the knapsack runs, every item gets a priority score (0–100) computed from four factors, each normalized to `[0, 1]` so no single factor dominates by scale:
+
+- **Interest** — your 1–5 rating → `(rating - 1) / 4`
+- **Recency** — items added today score 1.0, decaying linearly to 0 at 30 days
+- **Staleness** — inverse of recency; oldest items get a boost so nothing sits forever
+- **Mood match** — binary 1.0 bonus if your current mood matches the item's tag
+
+Weights are user-configurable via the options page. The default weights are intentionally asymmetric between recency and staleness — equal weights cancel each other out and produce no age-based differentiation.
+
+### DP table
+
+```text
+Items →  i=0   i=1   i=2  ...  i=n
+        ┌─────┬─────┬─────┬─────┐
+w=0     │  0  │  0  │  0  │  0  │
+w=1     │  0  │  v1 │  v1 │ ... │
+w=2     │  0  │  v1 │  v2 │ ... │
+ ...    │ ... │ ... │ ... │ ... │
+w=W     │  0  │ ... │ ... │best │
+        └─────┴─────┴─────┴─────┘
+```
+
+The table is 2D (`dp[i][w]`) rather than the space-optimized 1D rolling array — backtracking to recover *which* items were selected (not just the best total value) requires the full row history. With a 60-minute cap the table stays at most `n × 60` cells, so memory is not a concern.
+
+### Complexity
+
+- **Time:** O(n × W) — effectively O(n) since W is fixed at 60
+- **Space:** O(n × W) for the 2D table
+
+### Correctness verification
+
+`knapsackBruteForce` is exported alongside the DP solution and checks all `2ⁿ` subsets. It is used in the test suite to verify the DP result matches brute-force on small inputs, giving strong correctness guarantees without relying on hand-computed expected values.
+
+---
+
 ## Planned features
 
 ### P2 — Near-term
