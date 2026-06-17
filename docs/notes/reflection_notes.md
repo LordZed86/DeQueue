@@ -43,12 +43,6 @@ Running list of things worth thinking about for the final reflection paper and p
 - The use case is filling _gaps_ — waiting rooms, lunch breaks, the 20 minutes between tasks. This is not a tool for planning a full-day reading session.
 - A 60-minute cap keeps the DP table small and the UX honest about what the tool is for.
 
-### Why start with localStorage instead of IndexedDB?
-
-- localStorage is synchronous and dead simple — read a string, parse JSON, done.
-- IndexedDB is async, requires understanding of transactions and object stores, and is much more code.
-- For a list of dozens of items, localStorage is plenty. Migration to IndexedDB is the right move if the list grows large or we need indexed queries, but we're not there yet.
-
 ### Why add a queue on top of the knapsack output?
 
 - The knapsack returns a flat array — the queue gives that array behavior: a current item, a way to advance, a way to skip without losing the item.
@@ -85,10 +79,10 @@ Running list of things worth thinking about for the final reflection paper and p
 - `chrome.storage.session` matches that lifecycle exactly: it survives popup close and tab switches within a session, but auto-clears on browser restart.
 - localStorage would require manual cleanup and would fail silently on crash — the user would reopen the extension and see a phantom session from a week ago.
 
-### Why use `chrome.storage.session` for active session state instead of localStorage?
+### Why does `clearAll` remove specific keys instead of calling `localStorage.clear()`?
 
 - `localStorage.clear()` would wipe everything stored at the extension's origin, including any data that other extension components might store in the future.
-- Scoping the removal to `dequeue_items` and `dequeue_settings` is safer and less surprising.
+- Scoping the removal to DeQueue's own keys is safer and less surprising.
 
 ### Why Vitest instead of Jest?
 
@@ -129,7 +123,7 @@ Running list of things worth thinking about for the final reflection paper and p
 
 ## Honest reflection prompts
 
-These are questions worth answering honestly in the reflection paper.
+These are questions worth answering honestly in a reflection paper or preparing answers for if asked during my defense.
 
 ### About the algorithm
 
@@ -182,7 +176,7 @@ These are questions worth answering honestly in the reflection paper.
 
 ## Things to prepare for the defense
 
-### Questions the instructor might ask
+### Possible questions to prep for
 
 - "Walk me through the DP table for a small example." — Be ready to trace through a 3-item, 10-minute-budget example on paper.
 - "Why is this a 0/1 knapsack and not a fractional or bounded knapsack?" — 0/1 because each item is either read or not; no partial consumption.
@@ -190,12 +184,12 @@ These are questions worth answering honestly in the reflection paper.
 - "How does the scoring function prevent a single factor from dominating?" — Normalization to [0,1] before weighting. All factors on the same scale.
 - "How did you verify correctness?" — Brute-force comparison on small inputs (≤15 items, all 2^n subsets), plus hand-verified known cases, plus edge case tests.
 - "Why did you choose these specific scoring factors?" — Design decision based on what signals an ADHD user would actually have access to and care about: their own interest rating, how fresh the content is, how long it's been waiting, and how it matches their current energy.
-- "What would you add if you had more time?" — P1 features: sort/filter UI, options page (weight sliders, default budget). P2 stretch: auto-fetch from reading lists, calendar integration, topic clustering (graph theory).
+- "What would you add if you had more time?" — P2 near-term: JSON export/import, topic clustering (this is where graph theory comes back in), mood preset rework, Safari support. P3 stretch: auto-import from reading lists, calendar integration, algorithm visualizer, user stats dashboard.
 - "Why did you add a queue if the knapsack already gives you a list?" — The knapsack answers _which_ items to include. The queue answers _how to present them_ — one at a time, in priority order, with a skip-without-losing mechanic. They solve different problems. The queue is also a direct nod to the app name.
 - "Why localStorage and not IndexedDB?" — localStorage is synchronous, requires no async handling, and is simple to debug. For a personal tool with a modest item count, it's plenty. All access is behind `storage.js`, so migrating later is a single-file change with no impact on the rest of the app.
 - "What happens if `localStorage` is full or unavailable?" — `getItems()` and `getSettings()` catch exceptions and return safe defaults. `saveItem` would throw silently in its current form — that's a known gap that could be addressed with a try/catch and a user-facing error message.
 
-### New defense questions from today's work
+### Defense questions from content script & background worker work
 
 - "Why does the popup have to go through the background worker to talk to the content script?" — MV3 architectural constraint. The popup context and content script context are isolated; the service worker is the only allowed bridge.
 - "How does the content script know what kind of page it's on?" — Hostname regex for known video sites (YouTube, Vimeo), then `og:type` meta tag. Falls back to "article" as a safe default.
@@ -210,7 +204,7 @@ These are questions worth answering honestly in the reflection paper.
 - "Why didn't the first implementation work even though the design was correct?" — The `saveSession` call wasn't awaited inside `generateSession`. `chrome.storage.session` is async — calling it without `await` starts the write but doesn't wait for it to finish. The popup can close before the write completes, leaving nothing in storage to restore. The fix was making the function async and awaiting the write before the popup could close.
 - "How does the restore path know which item to show first?" — It reconstructs a `SessionQueue` directly from the saved item array, which is already in priority order from when the session was first generated. It doesn't re-run `buildSessionQueue` (which would re-sort) — it trusts the saved order.
 
-### Defense questions from streak, achievements, and compatibility work (2026-06-12)
+### Defense questions from streak, achievements, and compatibility work
 
 - "Why add a streak? Is that evidence-based for ADHD?" — Streaks are a well-documented behavioral reinforcement tool. Consistent daily engagement is harder for ADHD users to maintain; a visible streak creates an external accountability signal (the "don't break the chain" effect). It's not a clinical intervention but it's grounded in behavioral CBT principles.
 - "How does `updateStreak` know it's a new day?" — It compares `lastDate` (stored as "YYYY-MM-DD") against today's date. If they match, it's a no-op. If yesterday matches, it increments. Otherwise it resets to 1. The date is derived from `new Date().toISOString().slice(0, 10)`.
@@ -222,7 +216,7 @@ These are questions worth answering honestly in the reflection paper.
 - "Why does the toast auto-dismiss instead of requiring a click?" — A required click would interrupt the session flow. The toast is informational, not blocking. 3.5 seconds is long enough to read but short enough not to linger.
 - "Why does `cleanDocumentTitle` only strip the last suffix segment?" — A title like "How to — Actually Focus" has a dash in the middle that should not be stripped. Anchoring the regex to `$` and replacing only once ensures we only remove the site name at the end, not content from the title itself.
 
-### Defense questions from sort/filter + options work (2026-06-11)
+### Defense questions from sort/filter + options work
 
 - "How does the sort-by-priority work — is it just the knapsack order?" — No. The filter/sort runs `scoreItems()` on the visible subset fresh each time, using the current mood selection. The queue view and session generation now use the same scoring signal. Sort by interest/recency/time use raw item fields.
 - "Why do you have both a mood filter in the queue view AND a mood selector for session generation?" — They do different things. The session mood selector feeds into `scoreItems()` and affects which items the knapsack picks. The queue mood filter just narrows what's displayed — it doesn't affect session generation. A user might filter to see only "focus" items, then generate a session from that subset.
@@ -242,7 +236,3 @@ These are questions worth answering honestly in the reflection paper.
 - Be ready to show the test suite running and passing (157 tests, 7 files).
 - Be ready to open the DP table in the browser console and show what it looks like for a small input (could add a debug export for this).
 - Load the unpacked extension in Chrome or Firefox and demonstrate the add-item flow with metadata pre-fill on a real page (try Wikipedia to show clean title extraction).
-
----
-
-_Add to this document as the project develops and new decisions are made._
