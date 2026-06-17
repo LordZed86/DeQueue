@@ -1,6 +1,6 @@
 # DeQueue
 
-![Tests](https://github.com/LordZed86/CS_398_Final-Project/actions/workflows/test.yml/badge.svg)
+![Tests](https://github.com/LordZed86/DeQueue/actions/workflows/test.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-GPL--3.0-blue)
 ![Version](https://img.shields.io/badge/version-1.0.0-informational)
 ![JavaScript](https://img.shields.io/badge/JavaScript-ES2022-yellow?logo=javascript)
