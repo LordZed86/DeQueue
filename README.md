@@ -55,21 +55,33 @@ Built for CS 398 — Algorithmic Problem Solving.
 
 ```plaintext
 src/
-├── manifest.json            # WebExtensions MV3 config
+├── manifest.json              # WebExtensions MV3 config
 ├── background/
-│   └── background.js        # Service worker — relays messages between popup and content script
+│   └── background.js          # Service worker — relays messages between popup and content script
 ├── content/
-│   └── content.js           # Injected into active tabs — scrapes page metadata to pre-fill the add form
+│   ├── content.js             # Injected into active tabs — scrapes page metadata to pre-fill the add form
+│   └── content.test.js
 ├── popup/
-│   ├── popup.html           # Extension popup UI (queue list, add item, session views)
-│   ├── popup.js             # Popup logic — wires storage, scoring, knapsack, and queue together
+│   ├── popup.html             # Extension popup UI (queue list, add item, session views)
+│   ├── popup.js               # Popup logic — wires storage, scoring, knapsack, and queue together
 │   └── popup.css
+├── options/
+│   ├── options.html           # Settings page — default budget, scoring weights, default mood
+│   ├── options.js
+│   └── options.css
 ├── core/
-│   ├── knapsack.js          # 0/1 knapsack DP — selects which items fit the time budget
-│   └── queue.js             # SessionQueue — presents knapsack output one item at a time
+│   ├── knapsack.js            # 0/1 knapsack DP — selects which items fit the time budget
+│   ├── knapsack.test.js
+│   ├── queue.js               # SessionQueue — presents knapsack output one item at a time
+│   ├── queue.test.js
+│   └── pipeline.test.js       # Full pipeline integration + stress tests
 └── utils/
-    ├── scoring.js           # Priority score function (interest, recency, staleness, mood)
-    └── storage.js           # localStorage wrapper — single place for all reads and writes
+    ├── scoring.js             # Priority score function (interest, recency, staleness, mood)
+    ├── scoring.test.js
+    ├── storage.js             # localStorage wrapper — single place for all reads and writes
+    ├── storage.test.js
+    ├── achievements.js        # Achievement definitions and unlock logic
+    └── achievements.test.js
 ```
 
 ---
@@ -90,44 +102,52 @@ A brute-force exhaustive search (`knapsackBruteForce`) is exported alongside the
 
 ## Running locally
 
-**Prerequisites:** Node.js 18+, Firefox or Chrome/Brave
+> **Note:** This is a browser extension — it cannot run in Codespaces, StackBlitz, or any other cloud-based environment. It must be loaded into a local browser using developer mode.
 
-**Install dependencies:**
+**Prerequisites:** Node.js 18+, Chrome, Brave, or Firefox
+
+**1. Install dependencies:**
 
 ```bash
 npm install
 ```
 
-**Build the extension:**
+**2. Build the extension:**
 
 ```bash
-npm run build        # one-time build
-npm run dev          # watch mode — rebuilds on every file save
+npm run build
 ```
 
-After each build, go to `chrome://extensions` and click the refresh icon on the DeQueue card to reload it.
+This outputs the built extension to the `dist/` folder.
 
-**Load in Firefox:**
+**3. Load the extension in your browser:**
 
-1. Go to `about:debugging` → This Firefox → Load Temporary Add-on
-2. Select `dist/manifest.json`
+**Chrome / Brave:**
 
-**Load in Chrome/Brave:**
+1. Go to `chrome://extensions`
+2. Enable **Developer mode** (toggle in the top right)
+3. Click **Load unpacked**
+4. Select the `dist/` folder
 
-1. Go to `chrome://extensions` → Enable Developer mode → Load unpacked
-2. Select the `dist/` folder
+**Firefox:**
 
-**Run tests:**
+1. Go to `about:debugging` → **This Firefox**
+2. Click **Load Temporary Add-on**
+3. Select `dist/manifest.json`
 
-```bash
-npm test
-```
+**4. Use the extension:**
 
-**Watch mode (auto-rebuild on save):**
+Click the DeQueue icon in your browser toolbar to open the popup. Navigate to any article or video, open the popup, and use **Add Item** to save it — the form will pre-fill from the page.
+
+---
+
+**Development (watch mode):**
 
 ```bash
 npm run dev
 ```
+
+Rebuilds automatically on every file save. After each rebuild, click the refresh icon on the DeQueue card in `chrome://extensions` to reload it in the browser.
 
 **Run tests:**
 
