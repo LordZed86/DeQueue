@@ -11,7 +11,7 @@ A chronological record of decisions made, problems hit, and bugs found for each 
 - Established the project as a browser extension (WebExtensions API) targeting Firefox and Chrome/Brave
 - Chose the 0/1 knapsack problem via bottom-up DP as the core algorithm
 - Set up ESLint, Prettier, and Vite as the toolchain
-- Wrote the full design document (`docs/design_documentation/DeQueue.md`)
+- Wrote the initial design document (`docs/design_documentation/DeQueue.md`)
 - Defined the `Item` data model, data flow diagrams, and scoring factor list
 - Scaffolded the `src/` directory structure
 
@@ -33,6 +33,14 @@ A chronological record of decisions made, problems hit, and bugs found for each 
 
 ---
 
+## Vitest Setup
+
+- Installed `vitest` as a dev dependency
+- Updated `package.json` to set `"test": "vitest run"` and added `"test:watch": "vitest"` for interactive development
+- Vitest was chosen over Jest because the project already uses Vite — they share config, both handle ESM natively, and no extra Babel/transform setup is needed
+
+---
+
 ## Core Algorithm & Scoring
 
 ### Files created
@@ -41,6 +49,8 @@ A chronological record of decisions made, problems hit, and bugs found for each 
 - `src/utils/scoring.js`
 - `src/core/knapsack.test.js`
 - `src/utils/scoring.test.js`
+
+---
 
 ### `src/core/knapsack.js`
 
@@ -54,7 +64,8 @@ A chronological record of decisions made, problems hit, and bugs found for each 
 
 #### Bugs / surprises
 
-- None in the implementation. The algorithm worked correctly on the first run.
+- The core DP structure was adapted from a standard textbook implementation and adjusted to fit the project — the main work was adding backtracking, the zero-weight filter, and the MAX_BUDGET cap on top of the base algorithm.
+- **Test bug (not algorithm bug):** The "picks items that maximize value, not the two lightest" test had a wrong hand-computed expected value in the comment — asserted `totalValue = 60` (items b+a) when the actual optimum was `totalValue = 65` (items a+c). The DP was correct; the test assertion was wrong. Caught because DP and brute-force agreed with each other but not with the hardcoded expected value.
 
 ---
 
@@ -70,74 +81,25 @@ A chronological record of decisions made, problems hit, and bugs found for each 
 
 #### Bugs / surprises
 
-- None in the implementation.
-
----
-
-### `src/core/knapsack.test.js`
-
-#### Bugs found during testing
-
-- **Test bug (not algorithm bug):** The "picks items that maximize value, not the two lightest" test had a wrong hand-computed answer in the comment. The test expected `totalValue = 60` (items b+a), but the actual optimum for that input was `totalValue = 65` (items a+c). The DP was correct — the test assertion was wrong. Fixed by correcting the expected value and updating the comment.
-
-#### Test coverage rationale
-
-- **DP vs. brute-force agreement on 4 different inputs:** This is the primary correctness check called out in the design doc. If both algorithms agree on the same total value across varied inputs, the DP is almost certainly correct.
-- **Edge cases (empty list, budget 0, all items over budget, exact fit, one minute over, weight-0 filter, MAX_BUDGET cap):** These cover the specific failure modes listed in the design doc's testing plan.
-- **Known optimal solutions:** A few hand-verified cases where we know the right answer and can assert specific values, not just DP==brute-force agreement.
-
----
-
-### `src/utils/scoring.test.js`
-
-#### Bugs found during testing
-
-- **Test bug — recency vs. staleness cancellation:** The initial recency test asserted that a fresh item scores higher than a 15-day-old item. At 15 days (halfway to the 30-day staleness ceiling), the recency contribution and the staleness contribution exactly cancel out under `DEFAULT_WEIGHTS` (both are weight 0.2 and their normalized scores are mirror images). The scores were equal, not ordered.
-  - First fix attempt: changed 15 days to 29 days. Still tied — because the cancellation is algebraic, not dependent on the specific age.
-  - Root cause: with equal weights, `recency + staleness = 0.2 * (1 - f) + 0.2 * f = 0.2` regardless of `f`. The combined contribution is constant.
-  - Final fix: wrote the test using custom weights that zero out staleness (and shift that weight to recency) to isolate the factor being tested.
-
-#### Design insight surfaced by this bug
-
-- In production, with `DEFAULT_WEIGHTS`, recency and staleness neutralize each other — a day-old item and a month-old item score the same from those two factors. The only way one age wins over another is if the weights are asymmetric. This is a real design question: should staleness weight be higher than recency so that old items gradually bubble up? **Worth revisiting during the options page design.**
-
-#### Test coverage rationale
-
-- **Output range:** Confirms the score is always an integer in [0, 100], no matter what inputs are given.
-- **Each factor tested in isolation:** Interest, recency, staleness, and mood match each have at least one test that isolates them (using custom weights) so a regression in one factor doesn't hide behind the others.
-- **Custom weights + zero weights:** Verifies the weighting system works as a multiplier and that zero weights produce zero contribution.
-- **`DEFAULT_WEIGHTS` sums to 1:** Ensures the normalization assumption holds. If someone adds a new factor and forgets to rebalance, this test catches it.
-- **`scoreItems` immutability:** Confirms originals are not mutated — a common subtle bug when spreading objects.
-
----
-
-## Vitest setup
-
-**Date:** 2026-06-03
-
-- Installed `vitest` as a dev dependency
-- Updated `package.json` to set `"test": "vitest run"` and added `"test:watch": "vitest"` for interactive development
-- Vitest was chosen over Jest because the project already uses Vite — they share config, both handle ESM natively, and no extra Babel/transform setup is needed
-
----
+- **Recency and staleness cancel each other out under equal weights:** The initial recency test asserted that a fresh item scores higher than a 15-day-old item. At 15 days the recency and staleness contributions exactly cancelled — both are weight 0.2 and their normalized scores are mirror images. Changing 15 days to 29 days didn't fix it either. Root cause: with equal weights, `recency + staleness = 0.2 × (1 - f) + 0.2 × f = 0.2` regardless of item age. The combined contribution is a constant. Fixed by writing the test with custom weights that zero out staleness to isolate the factor being tested.
+- **Design implication:** In production with `DEFAULT_WEIGHTS`, a day-old item and a month-old item score identically on the recency/staleness axis. The weights need to be asymmetric to actually differentiate by age. This is now an open design question for the options page.
 
 ---
 
 ## Storage Layer
-
-**Date:** 2026-06-03
 
 ### Files created
 
 - `src/utils/storage.js`
 - `src/utils/storage.test.js`
 
+---
+
 ### `src/utils/storage.js`
 
 #### Decisions
 
 - **localStorage over IndexedDB to start:** localStorage is synchronous and requires almost no setup — read a string, parse JSON, done. IndexedDB is async, requires transaction management, and is significantly more code. For a list of dozens of items, localStorage is plenty. The design doc explicitly planned for this migration path; `storage.js` is the single place it would happen.
-- **Two keys only:** `dequeue_items` (JSON array) and `dequeue_settings` (JSON object). Simple, predictable, easy to inspect in DevTools.
 - **`getItems()` never throws:** Wraps the `localStorage.getItem` + `JSON.parse` in a try/catch and returns `[]` on any failure. Corrupt storage should not crash the extension.
 - **`getPendingItems()` as the knapsack entry point:** Completed items must be excluded before the algorithm runs. This filter lives in storage so callers don't have to remember to do it.
 - **`saveSettings()` merges, not overwrites:** Callers can update one setting field without needing to read and re-write everything else. Prevents accidental data loss if settings grow over time.
@@ -146,14 +108,15 @@ A chronological record of decisions made, problems hit, and bugs found for each 
 
 #### Bugs / surprises
 
-- None. All 29 tests passed on the first run.
+- None. The module's invariants were clear from the design doc and translated directly into code without surprises.
+
+---
 
 ### `src/utils/storage.test.js`
 
 #### Setup
 
-- Storage tests need a real `localStorage` implementation. Vitest runs in Node by default, which has no `localStorage`. Added `@vitest-environment jsdom` as a per-file docblock so only this test file gets the browser environment — the algorithm tests continue running in Node (faster).
-- Installed `jsdom` as a dev dependency to support the jsdom environment.
+- Storage tests need a real `localStorage` implementation. Vitest runs in Node by default, which has no `localStorage`. Added `@vitest-environment jsdom` as a per-file docblock so only this test file gets the browser environment — the algorithm tests continue running in Node.
 - `beforeEach(() => clearAll())` ensures every test starts with a clean store. Without this, test order would matter and tests could interfere with each other.
 
 #### Test coverage rationale
@@ -165,16 +128,14 @@ A chronological record of decisions made, problems hit, and bugs found for each 
 
 ---
 
----
-
 ## Session Queue
-
-**Date:** 2026-06-03
 
 ### Files created
 
 - `src/core/queue.js`
 - `src/core/queue.test.js`
+
+---
 
 ### `src/core/queue.js`
 
@@ -184,34 +145,19 @@ The knapsack returns a flat array of selected items. Wrapping that in a queue le
 
 #### Decisions
 
-- **Class-based (`SessionQueue`):** A class with internal state (`_items`) is the clearest way to model a mutable queue — each method either reads or transforms the internal list. A functional approach (pure functions over an array) would have worked but would require the caller to pass the array back in on every call.
+- **Class-based (`SessionQueue`):** A class with internal state (`_items`) is the clearest way to model a mutable queue — each method either reads or transforms the internal list. A functional approach would have worked but would require the caller to pass the array back in on every call.
 - **`skip()` moves to the back instead of discarding:** If a user isn't in the mood for the current item, they shouldn't lose it — it cycles to the back and comes around again. This matches how ADHD users actually work: "not right now, but still this session."
 - **`peek()` returns `null` on empty (not an error):** The popup needs to know when the queue is exhausted to show a "session complete" state. Returning `null` is the natural signal; throwing would force every call site to use try/catch.
 - **`toArray()` returns a copy:** Callers can read the queue's contents for UI purposes (e.g. "1 of 4" progress) without being able to accidentally mutate the internal array.
 - **`buildSessionQueue()` sorts by descending value:** The highest-priority item surfaces first. Within a session, the user should encounter the most important thing while their attention is freshest.
-- **`_items` is private by convention (underscore prefix):** JavaScript doesn't enforce private fields without `#`, but the underscore signals clearly to future contributors that this array should not be touched directly.
 
 #### Bugs / surprises
 
-- None. All 23 tests passed on the first run.
-
-### `src/core/queue.test.js`
-
-#### Test coverage rationale
-
-- **`skip()` cycling test:** Three skips on a 3-item queue should return to the original front item. Verifies that skip is a true rotation, not a destructive operation.
-- **`skip()` on single-item queue:** Edge case — the item should stay at the front and size should remain 1. Without this test, a naive implementation that used `shift()` + `push()` on a length-1 array could accidentally behave differently.
-- **`toArray()` immutability:** Confirms that modifying the returned array doesn't touch the internal queue state — a common subtle bug when returning array references.
-- **`buildSessionQueue` sort order:** Checked both the full order and that `peek()` matches the highest-value item, as these are the two things the popup will actually use.
-- **Equal values:** Doesn't assert a specific order (that would be fragile) — just confirms no error is thrown when the sort comparator returns 0.
-
----
+- None. The queue contract was fully specified in the design doc before implementation started, so the code was essentially transcribing the spec which was adapted from my implementation in data structures class.
 
 ---
 
 ## Extension Scaffold & Popup
-
-**Date:** 2026-06-09
 
 ### Files created
 
@@ -220,6 +166,8 @@ The knapsack returns a flat array of selected items. Wrapping that in a queue le
 - `src/popup/popup.html`
 - `src/popup/popup.css`
 - `src/popup/popup.js`
+
+---
 
 ### `vite.config.js`
 
@@ -236,7 +184,7 @@ The knapsack returns a flat array of selected items. Wrapping that in a queue le
 - **Manifest V3:** Required for Chrome; Firefox supports it too. MV3 is the current standard and the one that will be maintained going forward.
 - **Permissions: `storage`, `activeTab`, `scripting`:** Minimum required set. `activeTab` + `scripting` lets the content script run on the current tab when triggered from the popup without requesting broad host permissions on install — better for user trust.
 - **`"type": "module"` on the service worker:** Matches the ESM setup already in the project. Without this the background script can't use `import`.
-- **`open_in_tab: false` on options:** Opens the options page as a popup panel rather than a new tab. Less disruptive for a lightweight settings page.
+- **`options_page` over `options_ui`:** Opens as a full tab; `options_ui` embeds in the browser's extension settings page with layout constraints. Full tab gives more control.
 
 ---
 
@@ -246,7 +194,7 @@ The knapsack returns a flat array of selected items. Wrapping that in a queue le
 
 - **Three `<section>` elements, one visible at a time:** Simpler than a multi-page SPA. All views are in the DOM at load; `popup.js` toggles `hidden` class to switch between them. No routing needed.
 - **Star rating uses `<button>` elements:** Accessible and keyboard-navigable. An `<input type="hidden">` holds the integer value for the form submit handler.
-- **`<a>` with `target="_blank" rel="noopener noreferrer"` for the session card URL:** Opens the link in a new tab (expected behavior from an extension popup) and avoids the `opener` security issue.
+- **`<a>` with `target="_blank" rel="noopener noreferrer"` for session card URL:** Opens in a new tab (expected behavior from an extension popup) and avoids the `opener` security issue.
 
 ---
 
@@ -256,95 +204,80 @@ The knapsack returns a flat array of selected items. Wrapping that in a queue le
 
 - **Full pipeline wired in `generateSession()`:** `getPendingItems()` → `scoreItems()` → `knapsack()` → `buildSessionQueue()`. This matches the data flow diagram in the design doc exactly.
 - **Points stored under `dequeue_points` directly in localStorage, not through `storage.js`:** Points are a UI-layer concern, not part of the item data model. Keeping them out of `storage.js` avoids polluting the data layer with display state.
-- **`saveSettings()` called on each session generation:** Persists the current budget and mood as defaults for the next time the popup opens. Small UX touch that avoids re-entering the same values every time.
-- **Content script pre-fill routed through `chrome.runtime.sendMessage`:** In MV3 the popup cannot message content scripts directly — all cross-context messaging must go through the background service worker. See background.js decisions below.
+- **Content script pre-fill routed through `chrome.runtime.sendMessage`:** In MV3 the popup cannot message content scripts directly — all cross-context messaging must go through the background service worker.
 
 #### Bugs / surprises
 
-- **`crypto.randomUUID()` not defined in popup context:** Had to change to `globalThis.crypto.randomUUID()`. An earlier attempt at `(globalThis.crypto ?? self.crypto)` also failed because `self` isn't defined in the popup context either.
-
----
+- **`crypto.randomUUID()` not available in popup context:** Calling `crypto.randomUUID()` directly threw a reference error. `(globalThis.crypto ?? self.crypto).randomUUID()` also failed because `self` isn't defined in the popup context. Fixed with `globalThis.crypto.randomUUID()`. The inconsistency between extension contexts (popup vs. service worker vs. content script) with Web APIs is something that bites you until you know it and then bites you again.
 
 ---
 
 ## Background Service Worker
 
-**Date:** 2026-06-09
-
 ### Files created
 
 - `src/background/background.js`
+
+---
 
 ### `src/background/background.js`
 
 #### Decisions
 
-- **Worker only handles messaging, not storage:** All storage reads and writes still go through `utils/storage.js` in the popup. The background worker's only job is to relay `GET_PAGE_META` requests from the popup to the content script on the active tab. This keeps the worker thin and testable-by-inspection.
-- **`return true` in the `onMessage` listener:** This is a required MV3 pattern when `sendResponse` is called asynchronously. Without it, the message channel closes before the async response arrives and the popup gets nothing — a silent failure with no error. Easy to forget, very hard to debug.
+- **Worker only handles messaging, not storage:** All storage reads and writes still go through `utils/storage.js` in the popup. The background worker's only job is to relay `GET_PAGE_META` requests from the popup to the content script on the active tab.
+- **`return true` in the `onMessage` listener:** This is a required MV3 pattern when `sendResponse` is called asynchronously. Without it, the message channel closes before the async response arrives and the popup gets nothing — a completely silent failure with no error message, no exception, just an empty response. Easy to forget, genuinely hard to debug. Worse then the my favorite error in C, segfault!
 - **`onInstalled` does nothing beyond logging:** `storage.js` initializes defaults lazily on first read, so there's no setup work to do at install time.
+
+#### Bugs / surprises
+
+- **The `return true` requirement was not obvious:** The MV3 docs mention it but it took a while to find. The symptom was that the popup's "Add Item" form never pre-filled — the content script ran fine, returned metadata, but the popup received `undefined`. Only after reading the MV3 messaging docs carefully did the missing `return true` surface as the cause.
 
 #### Why no unit tests
 
-The entire function body is Chrome API calls chained together (`chrome.tabs.query` → `chrome.tabs.sendMessage` → `sendResponse`). There is no branching logic of our own. Testing it would require mocking the Chrome APIs and asserting we called the mocks in the right order — which is just testing that we wrote the code we wrote, not that it's correct. Real bugs in this code only surface in an actual extension runtime.
-
----
+The entire function body is Chrome API calls chained together (`chrome.tabs.query` → `chrome.tabs.sendMessage` → `sendResponse`). There is no branching logic of my own. Testing it would require mocking the Chrome APIs and asserting I called the mocks in the right order — which is just testing that I wrote the code, not that it's correct. Real bugs in this code only surface in an actual extension runtime. There might even still be some bugs that crawl out in the future.
 
 ---
 
 ## Content Script
-
-**Date:** 2026-06-09
 
 ### Files created
 
 - `src/content/content.js`
 - `src/content/content.test.js`
 
+---
+
 ### `src/content/content.js`
 
 #### Decisions
 
-- **Each extractor returns `null` on failure, never throws:** The popup treats `null` as "leave this field blank." A failed extraction should never block the user from saving an item manually. The defensive `null` return is the contract every extractor must uphold.
+- **Each extractor returns `null` on failure, never throws:** The popup treats `null` as "leave this field blank." A failed extraction should never block the user from saving an item manually.
 - **`chrome.runtime.onMessage` guarded by `typeof chrome !== "undefined"`:** Without this guard, importing the module in Node/jsdom (for tests) throws immediately because `chrome` doesn't exist. The guard makes the module safely importable outside a browser extension context.
-- **Pure functions exported alongside the listener:** `extractTitle`, `extractContentType`, `parseDurationString`, etc. are all exported so they can be unit tested in isolation. The message listener is just the entry point — the real logic is in the exported functions.
+- **Pure functions exported alongside the listener:** `extractTitle`, `extractContentType`, `parseDurationString`, etc. are all exported so they can be unit tested in isolation. The message listener is just the entry point.
 - **`innerText` falls back to `textContent`:** `innerText` is a layout-dependent browser API not implemented in jsdom. The source uses `item.innerText ?? item.textContent` so word-count estimation works in both a real browser and in tests.
-- **Extraction priority per field follows the design doc exactly:** `og:title` → `twitter:title` → `<title>`; `og:description` → `twitter:description` → `meta[name=description]`; etc.
 
 #### Bugs / surprises
 
-- **`??` and `||` cannot be mixed in the same expression without parentheses:** `document.title?.trim() ?? null` was changed to `(document.title?.trim() || null)` after a rolldown parse error. The fix is to wrap the `||` expression in parens so the operators don't appear at the same precedence level.
-- **`document.title` returns `""` in jsdom, not `null`:** The `??` operator only catches `null` and `undefined`, not empty strings. Changed to `|| null` so an empty title string correctly falls through to `null`.
+- **`??` and `||` cannot be mixed in the same expression without parentheses:** (I cannot stress this enough) `document.title?.trim() ?? null` caused a rolldown parse error when `??` and `||` appeared at the same precedence level. Fixed by wrapping: `(document.title?.trim() || null)`.
+- **`document.title` returns `""` in jsdom, not `null`:** The `??` operator only catches `null` and `undefined`, not empty strings. An empty title string was slipping through as-is instead of falling through to `null`. Changed to `|| null`.
+
+---
 
 ### `src/content/content.test.js`
 
 #### Test environment
 
-- `@vitest-environment jsdom` per-file docblock — same pattern as `storage.test.js`. The content script's DOM queries need a browser-like environment; the algorithm tests continue running in Node.
+- `@vitest-environment jsdom` per-file docblock — same pattern as `storage.test.js`. The content script's DOM queries need a browser-like environment.
 
 #### Bugs found during testing
 
-- **`window.location.assign()` is a no-op in jsdom:** jsdom's `window.location` is read-only; calling `assign()` doesn't change `hostname`. The three hostname-based content type tests (youtube.com, youtu.be, vimeo.com) were rewritten to use `og:type` meta tags to trigger the video code path instead. The hostname regex branches are correct by inspection — three lines of simple regex with no logic.
-- **`innerText` not implemented in jsdom:** Word-count tests returned `null` because `article.innerText` was `undefined`. Fixed in the source (see above) so `textContent` is used as the fallback.
-- **`twitter:title` meta tag attribute:** The test was using `name="twitter:title"` but the source code queries `property="twitter:title"`. Fixed by using `property=` in the test's `setMeta` helper call.
-
-#### Test coverage rationale
-
-- **`parseDurationString` and `parseIsoDuration`:** Pure functions with clear inputs/outputs — tested exhaustively including rounding behavior (29s rounds down, 30s rounds up) and invalid inputs.
-- **Each extractor tested with its full fallback chain:** e.g. `extractTitle` tested with og:title present (uses it), og:title absent + twitter:title present (falls back), both absent (uses document.title), all absent (returns null). This verifies the priority order, not just that each source can be read.
-- **`extractPageMeta` integration test:** Confirms all fields come back correctly when a fully-tagged page is simulated, and that missing metadata returns null fields without throwing.
-
-#### Why `background.js` and `popup.js` are not unit tested
-
-- `background.js` has no logic — only Chrome API wiring. See background.js section above.
-- `popup.js` is DOM manipulation glue over already-tested modules. Meaningful tests require a real extension runtime or a component framework. Flagged for integration/hallway testing.
-
----
+- **`window.location` is read-only in jsdom:** jsdom's `window.location` cannot be assigned. The three hostname-based content type tests (youtube.com, youtu.be, vimeo.com) couldn't simulate different URLs. Rewrote them to use `og:type` meta tags to trigger the video code path instead. The hostname regex branches are correct by inspection.
+- **`innerText` not implemented in jsdom:** Word-count tests returned `null` because `article.innerText` was `undefined`. Fixed in the source with the `textContent` fallback (see above).
+- **`twitter:title` attribute mismatch:** The test used `name="twitter:title"` but the source queries `property="twitter:title"`. Twitter meta tags use `property`, not `name` — easy to mix up when copying from og: examples.
 
 ---
 
 ## Session Persistence
-
-**Date:** 2026-06-10
 
 ### Problem
 
@@ -352,7 +285,7 @@ The popup is a browser window — it is destroyed every time it closes. Clicking
 
 ### Solution
 
-Added `saveSession`, `loadSession`, and `clearSession` to `utils/storage.js` using `chrome.storage.session`. The init block in `popup.js` now checks for a saved session on every popup open and restores it directly into a `SessionQueue`, skipping the queue view entirely.
+Added `saveSession`, `loadSession`, and `clearSession` to `utils/storage.js` using `chrome.storage.session`. The init block in `popup.js` now checks for a saved session on every popup open and restores it directly into a `SessionQueue`.
 
 ### Files changed
 
@@ -361,18 +294,17 @@ Added `saveSession`, `loadSession`, and `clearSession` to `utils/storage.js` usi
 
 ### Key decisions
 
-- **`chrome.storage.session` over localStorage:** localStorage persists indefinitely — a crashed session would incorrectly restore on next open. `chrome.storage.session` is automatically scoped to the browser session and self-cleans at the right time.
-- **Save on generate, not just on Done/Skip:** The session must be written before the user clicks the first link (which closes the popup). Waiting until Done/Skip would be too late.
-- **`await` on all storage writes in popup:** `chrome.storage.session` is async. Missing an `await` before popup close means the write races with process teardown and may silently drop. All `saveSession` / `clearSession` calls in popup.js are now awaited.
-- **`SessionQueue` imported directly in popup.js:** The restore path constructs a `SessionQueue` from the raw saved item array (not through `buildSessionQueue`, which would re-sort already-ordered data). This required importing the class directly.
+- **`chrome.storage.session` over localStorage:** localStorage persists indefinitely — a crashed session would incorrectly restore on next open. `chrome.storage.session` is automatically scoped to the browser session and self-cleans on restart.
+- **Save on generate, not just on Done/Skip:** The session must be written before the user clicks the first link, which closes the popup. Waiting until Done/Skip would be too late.
+- **`SessionQueue` constructed directly in restore path:** Not through `buildSessionQueue`, which would re-sort already-ordered data.
 
 ### Bugs / surprises
 
-- First implementation didn't `await` the `saveSession` call inside `generateSession`. The popup could close before the async write completed, leaving nothing in storage to restore. Fixed by making `generateSession` and `persistSession` async.
+- **Missing `await` on `saveSession` caused a silent race condition:** The first implementation didn't `await` the `saveSession` call inside `generateSession`. The popup could close before the async write completed, leaving nothing in storage to restore. The symptom was intermittent — sometimes session restored, sometimes it didn't, depending on how fast the user clicked. Fixed by making `generateSession` and `persistSession` fully async. This one was subtle because it only manifested when the popup closed quickly after session generation.
+
+---
 
 ## Sort/Filter UI, Options Page, In-Progress Flag
-
-**Date:** 2026-06-11
 
 ### Files changed
 
@@ -385,14 +317,16 @@ Added `saveSession`, `loadSession`, and `clearSession` to `utils/storage.js` usi
 - `src/options/options.js` — new file
 - `src/options/options.css` — new file
 
+---
+
 ### Sort/filter bar
 
 #### Decisions
 
 - **Three dropdowns in a compact bar:** topic filter, mood filter, sort order. Placed directly below the queue header so it's always visible without consuming a separate view.
 - **Topic dropdown auto-populated from items:** Scans pending items for unique non-null `topic` values and builds the `<option>` list dynamically. If the user has no topics tagged, the dropdown just shows "All topics" — no dead UI.
-- **Sort piggybacks on `scoreItems()`:** The "By priority" sort already scores items using the current mood selection, so the sort and session generation stay in sync. Other sorts (interest, recency, time) use raw item fields.
-- **In-progress item always pins to top regardless of sort:** A secondary sort pass puts `inProgress: true` items first. The active sort still orders everything else correctly.
+- **Sort piggybacks on `scoreItems()`:** The "By priority" sort already scores items using the current mood selection, so the sort and session generation stay in sync.
+- **In-progress item always pins to top regardless of sort:** A secondary sort pass puts `inProgress: true` items first.
 - **Item count shows "X of Y items" when filtered:** Communicates to the user that they're seeing a subset, not the whole queue.
 
 #### Bugs / surprises
@@ -405,11 +339,9 @@ Added `saveSession`, `loadSession`, and `clearSession` to `utils/storage.js` usi
 
 #### Decisions
 
-- **Weight sliders with live % labels:** Each slider shows its current value as a percentage next to the label. Updates on `input` event (not `change`) so the label tracks the thumb in real time.
-- **Auto-normalization on save:** The four raw slider values (0–100 each) are divided by their sum, so the stored weights always sum to 1.0 regardless of what the user sets. This means the user doesn't have to think about percentages summing to 100 — they just dial up/down factors relative to each other.
-- **`saveSettings` merge semantics reused:** Options page patches only the three settings fields it owns (`defaultBudget`, `defaultMood`, `weights`). No risk of clobbering other settings fields added later.
-- **Gear button in popup opens options via `chrome.runtime.openOptionsPage()`:** This is the standard MV3 API for opening the options page; it opens in a new tab or the browser's extension settings panel depending on the browser.
-- **`options_page` in manifest (not `options_ui`):** `options_page` opens as a full tab; `options_ui` embeds in the browser's extensions settings page with constraints. Full tab gives us more control over layout.
+- **Weight sliders with live % labels:** Each slider shows its current value as a percentage next to the label. Updates on `input` event so the label tracks the thumb in real time.
+- **Auto-normalization on save:** The four raw slider values are divided by their sum, so stored weights always sum to 1.0. The user dials factors up/down relative to each other without needing to think about percentages summing to 100.
+- **`saveSettings` merge semantics reused:** Options page patches only the three settings fields it owns. No risk of clobbering other settings fields added later.
 
 #### Bugs / surprises
 
@@ -421,46 +353,36 @@ Added `saveSession`, `loadSession`, and `clearSession` to `utils/storage.js` usi
 
 #### Decisions
 
-- **Flag is stored on the item in localStorage:** `inProgress: boolean` added to the item object via `markInProgress(id)`. At most one item is flagged at a time — `markInProgress` clears the flag on all other items before setting it.
-- **Set on End Session, cleared on Done:** End Session flags the item currently shown in the session card. Done (completing an item) calls `clearInProgress()` to remove any flag — the item is done so the flag is irrelevant.
-- **Visual: red border + "In Progress" badge:** The card gets `border-color: var(--color-accent)` and a small uppercase badge in the meta row. Consistent with the extension's accent color language (accent = important/active).
-- **Pins above sort order, not as a separate section:** A secondary sort after the main sort ensures the in-progress item always appears first without needing a separate UI zone or heading.
-
-#### Bugs / surprises
-
-- None on first implementation.
-
----
+- **Flag stored on the item in localStorage:** `inProgress: boolean` on the item object via `markInProgress(id)`. At most one item is flagged at a time — `markInProgress` clears all other flags before setting the new one.
+- **Set on End Session, cleared on Done:** End Session flags the item currently shown. Done clears any flag — the item is done so the flag is irrelevant.
+- **Visual: red border + "In Progress" badge:** Consistent with the extension's accent color language (accent = important/active).
+- **Pins above sort order, not as a separate section:** A secondary sort after the main sort ensures the in-progress item always appears first without needing a separate UI zone.
 
 ---
 
 ## Streak, Session Summary, In-Progress Resume, Site Compatibility, Achievements
 
-**Date:** 2026-06-12
-
 ### Files changed
 
-- `src/utils/storage.js` — added `KEYS.STREAK`, `KEYS.ACHIEVEMENTS`; `getStreak()`, `updateStreak()`, `getTotalCompleted()`, `getUnlockedAchievements()`, `unlockAchievement()`; `clearAll()` now wipes all four keys
-- `src/utils/achievements.js` — new file; defines 6 achievement milestones and `checkAchievements(stats, unlockedIds)`
+- `src/utils/storage.js` — added `KEYS.STREAK`, `KEYS.ACHIEVEMENTS`; streak and achievement functions; `clearAll()` updated
+- `src/utils/achievements.js` — new file; 6 achievement milestones and `checkAchievements()`
 - `src/utils/achievements.test.js` — new file; 10 tests
-- `src/utils/storage.test.js` — added streak tests (8 new)
-- `src/content/content.js` — added `cleanDocumentTitle()` helper + export; used in `extractTitle()` fallback
-- `src/content/content.test.js` — added `cleanDocumentTitle` tests (6 new); updated `extractTitle` fallback test
-- `src/popup/popup.html` — streak display in header; achievements button + panel; toast element; session summary gets items/streak lines
-- `src/popup/popup.js` — streak display wired into `renderPoints()`; `sessionItemsCompleted` and `sessionStartTime` state; `checkAndUnlock()` called on Done; achievements panel render + toggle; in-progress resume confirm dialog in `generateSession()`
-- `src/popup/popup.css` — `.header-stats`, `.streak`, `.achievement-toast`, `.achievements-panel` and child styles, `.complete-items`, `.complete-streak`
+- `src/utils/storage.test.js` — 8 new streak tests
+- `src/content/content.js` — added `cleanDocumentTitle()` and integrated into `extractTitle()` fallback
+- `src/content/content.test.js` — 6 new `cleanDocumentTitle` tests; updated `extractTitle` fallback test
+- `src/popup/popup.html` — streak in header; achievements button + panel; toast element; session summary lines
+- `src/popup/popup.js` — streak display, `checkAndUnlock()`, achievements panel, in-progress resume confirm dialog
+- `src/popup/popup.css` — header stats, streak, toast, achievements panel styles
+
+---
 
 ### Streak tracking
 
 #### Decisions
 
-- **`lastDate` stored as "YYYY-MM-DD" string:** Timezone-safe and human-readable in DevTools. `Date.now()` timestamps would require conversion to compare calendar days correctly.
-- **`updateStreak` accepts an optional `todayStr` override:** Makes the function testable without mocking `Date`. Tests pass explicit date strings; production code passes nothing and uses `new Date().toISOString().slice(0, 10)`.
-- **Streak stored in localStorage, not `chrome.storage.session`:** Streaks span days and should survive browser restarts. Session storage would wipe on every browser restart.
-
-#### Bugs / surprises
-
-- None on first implementation. All 8 new tests passed immediately.
+- **`lastDate` stored as "YYYY-MM-DD" string:** Timezone-safe and human-readable in DevTools. Timestamps would require conversion to compare calendar days correctly.
+- **`updateStreak` accepts an optional `todayStr` override:** Makes the function testable without mocking `Date`. Tests pass explicit date strings; production passes nothing and uses `new Date().toISOString().slice(0, 10)`.
+- **Stored in localStorage, not `chrome.storage.session`:** Streaks span days and must survive browser restarts.
 
 ---
 
@@ -468,8 +390,8 @@ Added `saveSession`, `loadSession`, and `clearSession` to `utils/storage.js` usi
 
 #### Decisions
 
-- **Show items completed, points earned, and streak on session complete:** More satisfying than just points. Items completed gives a concrete "I did X things" signal. Streak message uses different text for day 1 ("Streak started!") vs. continuation ("N day streak!").
-- **`sessionItemsCompleted` tracked in popup state:** Not derivable from the queue (which is empty by then). Incremented on each Done click alongside `sessionPointsEarned`.
+- **Show items completed, points earned, and streak on session complete:** More satisfying than just a points number. Streak message uses different text for day 1 vs. continuation.
+- **`sessionItemsCompleted` tracked in popup state:** Not derivable from the queue (which is empty by session end). Incremented on each Done click.
 
 ---
 
@@ -477,13 +399,9 @@ Added `saveSession`, `loadSession`, and `clearSession` to `utils/storage.js` usi
 
 #### Decisions
 
-- **`confirm()` dialog on Generate Session:** Native browser confirm is accessible, requires no new UI, and is appropriately modal — the user can't accidentally dismiss it. The prompt text includes the item title so the user knows what they're being asked about.
-- **"No" keeps the in-progress flag:** The item remains flagged for next time. Excluding it from the current session's knapsack pool prevents it from appearing without the user's explicit choice.
-- **Budget reduction when resuming:** Subtracting the in-progress item's `timeEstimate` from the budget before running knapsack ensures the total session time still fits the budget. `Math.max(0, budget - item.timeEstimate)` guards against negative budgets if the item alone exceeds the budget.
-
-#### Bugs / surprises
-
-- None on first implementation.
+- **`confirm()` dialog on Generate Session:** Native browser confirm is accessible, requires no new UI, and is appropriately modal. The prompt text includes the item title.
+- **"No" keeps the in-progress flag:** The item remains flagged for next time.
+- **Budget reduction when resuming:** `Math.max(0, budget - item.timeEstimate)` subtracts the in-progress item's time before running knapsack so the total session still fits the budget.
 
 ---
 
@@ -491,21 +409,15 @@ Added `saveSession`, `loadSession`, and `clearSession` to `utils/storage.js` usi
 
 #### Problem
 
-Wikipedia and many other sites don't set `og:title` — only `document.title`. Their `document.title` includes a site-name suffix: "Article Name - Wikipedia", "Story | The Guardian". These suffixes clutter the add-item form title field.
+Wikipedia and many other sites don't set `og:title` — only `document.title`. Their titles include a site-name suffix: "Article Name - Wikipedia", "Story | The Guardian". These suffixes cluttered the add-item form.
 
 #### Solution
 
-`cleanDocumentTitle(raw)` strips the last `" - Site Name"` / `"| Site Name"` / `"– Site Name"` segment using a single regex. Applied only in the `document.title` fallback — `og:title` and `twitter:title` are always clean.
-
-#### Decisions
-
-- **Regex strips only the last segment:** `replace(/\s*[-|–—]\s*[^-|–—]{3,}$/, "")` — the `$` anchor and single replacement ensure we only strip the outermost suffix, not hyphens in the middle of a title ("How to — Actually Focus").
-- **Minimum 3-char site name guard (`{3,}`):** Prevents stripping single-char or two-char suffixes that might be part of a title rather than a site name.
-- **Falls back to `raw.trim()` if the regex strips everything:** Edge case where the entire title matches the suffix pattern. The raw title is better than null.
+`cleanDocumentTitle(raw)` strips the last `" - Site Name"` / `"| Site Name"` / `"– Site Name"` segment with a single regex. Applied only in the `document.title` fallback — `og:title` and `twitter:title` are always clean.
 
 #### Bugs / surprises
 
-- None on first implementation.
+- The regex needed a minimum 3-char site name guard (`{3,}`) to avoid stripping single- or two-char suffixes that might be part of a legitimate title rather than a site name. Edge case: if the regex strips the entire title, it falls back to the raw trimmed value.
 
 ---
 
@@ -513,15 +425,13 @@ Wikipedia and many other sites don't set `og:title` — only `document.title`. T
 
 #### Decisions
 
-- **Pure `check(stats)` functions in `achievements.js`:** Each achievement is a plain object with a `check` function — no side effects, no storage access. Makes them trivially testable and easy to add new ones.
-- **`checkAchievements(stats, unlockedIds)` takes the unlocked set as a parameter:** Caller (popup.js) is responsible for reading and writing storage. The achievements module stays pure. This avoids hidden storage reads inside what should be a pure check.
-- **Toast auto-dismisses after 3.5 seconds:** Long enough to read, short enough not to linger. `clearTimeout` before each new toast prevents stacking if multiple achievements unlock at once (e.g. first item unlocks both "First Step" and starts a potential streak).
-- **Achievements panel overlays the popup as a positioned div:** Simpler than a fourth view in the view-switching system. Toggled via `hidden` class, positioned absolutely below the header. Doesn't require changes to the view routing logic.
-- **Locked achievements shown at 40% opacity with 🔒 icon:** User can see what's coming without it being distracting. Motivates future use without requiring separate "locked" and "unlocked" lists.
-- **`speed_run` requires `sessionItemsCompleted >= 1`:** Guards against a trivially empty session (e.g. user generates then immediately ends) unlocking the achievement.
+- **Pure `check(stats)` functions in `achievements.js`:** Each achievement is a plain object with a `check` function — no side effects, no storage access. Makes them trivially testable and easy to extend.
+- **`checkAchievements(stats, unlockedIds)` takes the unlocked set as a parameter:** Caller is responsible for storage. The achievements module stays pure.
+- **Toast auto-dismisses after 3.5 seconds:** `clearTimeout` before each new toast prevents stacking if multiple achievements unlock at once.
+- **Achievements panel overlays the popup as a positioned div:** Simpler than a fourth view in the view-switching system. Toggled via `hidden` class, no changes to view routing logic needed.
+- **Locked achievements shown at 40% opacity with 🔒 icon:** User can see what's coming without it being distracting.
+- **`speed_run` requires `sessionItemsCompleted >= 1`:** Guards against an empty session (user generates then immediately ends) unlocking the achievement.
 
-#### Bugs / surprises
+---
 
-- None on first implementation. All 10 tests passed immediately.
-
-_This log will be updated as each new file or feature is built._
+_This log will be updated as new files or features are built._
