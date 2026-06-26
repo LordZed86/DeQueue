@@ -1,9 +1,8 @@
 # DeQueue — Architecture & Porting Strategy
 
 This document captures the _reasoning_ behind technical decisions, not just the
-decisions themselves. It's the expanded version of what's summarized in
-`.claude/CLAUDE.md`. Update this as new platforms get built and assumptions get tested
-against reality.
+decisions themselves. Update this as new platforms get built and assumptions get tested
+against reality. this will most likely be integrated into the design doc in coming commits
 
 ---
 
@@ -166,7 +165,4 @@ so theme-swapping stays just as cheap natively as it is today via CSS.
 
 ## 6. Repo structure
 
-See `.claude/CLAUDE.md` for the target monorepo layout. Single repo, not one repo per
-platform — chosen specifically because the engine must stay in sync across
-all surfaces, and a living roadmap/decision log is far more useful when it
-lives next to the code it describes rather than in a disconnected docs repo.
+Single repo, not one repo per platform — chosen specifically because the engine must stay in sync across all surfaces, and a living roadmap/decision log is far more useful when it lives next to the code it describes rather than in a disconnected docs repo.
