@@ -15,6 +15,7 @@ export const KEYS = {
   SETTINGS: "dequeue_settings",
   STREAK: "dequeue_streak",
   ACHIEVEMENTS: "dequeue_achievements",
+  POINTS: "dequeue_points",
 };
 
 /** @typedef {import('../core/knapsack.js').KnapsackItem & import('./scoring.js').ScoringInput} Item */
@@ -101,19 +102,14 @@ export function getPendingItems() {
  * @param {string} id
  */
 export function markInProgress(id) {
-  const items = getItems().map((i) => ({
-    ...i,
-    inProgress: i.id === id ? true : false,
-  }));
-  localStorage.setItem(KEYS.ITEMS, JSON.stringify(items));
+  setItems(getItems().map((i) => ({ ...i, inProgress: i.id === id })));
 }
 
 /**
  * Clears the in-progress flag on all items.
  */
 export function clearInProgress() {
-  const items = getItems().map((i) => ({ ...i, inProgress: false }));
-  localStorage.setItem(KEYS.ITEMS, JSON.stringify(items));
+  setItems(getItems().map((i) => ({ ...i, inProgress: false })));
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
@@ -272,6 +268,18 @@ export function clearSession() {
   return chrome.storage.session.remove(SESSION_KEY);
 }
 
+// ─── Points ───────────────────────────────────────────────────────────────────
+
+/** @returns {number} */
+export function getPoints() {
+  return parseInt(localStorage.getItem(KEYS.POINTS) ?? "0", 10);
+}
+
+/** @param {number} n */
+export function addPoints(n) {
+  localStorage.setItem(KEYS.POINTS, String(getPoints() + n));
+}
+
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
 /**
@@ -283,4 +291,5 @@ export function clearAll() {
   localStorage.removeItem(KEYS.SETTINGS);
   localStorage.removeItem(KEYS.STREAK);
   localStorage.removeItem(KEYS.ACHIEVEMENTS);
+  localStorage.removeItem(KEYS.POINTS);
 }

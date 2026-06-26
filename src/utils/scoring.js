@@ -86,5 +86,9 @@ export function computeScore(item, opts = {}) {
  * @returns {Array}        - Items with a `value` field set to their computed score
  */
 export function scoreItems(items, opts = {}) {
-  return items.map((item) => ({ ...item, value: computeScore(item, opts) }));
+  return items.map((item) => ({
+    ...item,
+    weight: item.timeEstimate,
+    value: computeScore(item, opts),
+  }));
 }
