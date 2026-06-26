@@ -57,25 +57,37 @@ CS_398_Final-Project/
 The monorepo restructure (`packages/engine`, `apps/extension`, etc.) is a
 future task in ROADMAP.md P2 — the repo is not yet organized that way.
 
-## Immediate priorities (as of 2026-06-25)
+## What was done in the last session (2026-06-25)
 
-**Before publishing to stores — fix these first:**
+- Moved `ROADMAP.md` and `ARCHITECTURE.md` into `docs/`
+- Integrated both into `docs/design_documentation/DeQueue.md` (sections 11 + 12,
+  updated open questions throughout)
+- Fixed all four pre-release cleanup items:
+  - `dequeue_points` now lives in `storage.js` (`KEYS.POINTS`, `getPoints`, `addPoints`, `clearAll`)
+  - `markInProgress` / `clearInProgress` use `setItems` consistently
+  - `weight` removed from saved item shape — derived in `scoreItems` from `timeEstimate`
+  - Debug `console.log` removed from popup init
+- Fixed two P1 bugs:
+  - `cardUrl.onclick` now calls `markInProgress` before navigating away
+  - `persistSession()` called after restoring a saved session on popup open
+- Fixed ESLint config — added missing browser globals (`setTimeout`, `clearTimeout`,
+  `confirm`, `crypto`, `performance`)
+- All 157 tests still passing
 
-P1 bugs (user-visible):
+## Immediate priorities
 
-1. Item not marked "visited" when URL is opened — `cardUrl` click doesn't call
-   `markInProgress`; only End Session does. Fix: call `markInProgress` on link click.
-2. Session resets when opening item in new tab — `saveSession` timing gap in
-   `popup.js` init; needs targeted testing to find exact failure point.
-3. Autofill title hit-or-miss — likely content script not injected on restricted
-   URLs; `background.js` silently returns null.
+P1 bug still open:
 
-Pre-release cleanup (not user-visible):
+- Autofill title hit-or-miss — likely content script not injected on restricted
+  URLs; `background.js` silently returns null. Needs real failure cases to confirm
+  root cause before fixing.
 
-- `dequeue_points` bypasses `storage.js` — lives directly in `popup.js` localStorage calls
-- Debug `console.log` still in `popup.js` init (line ~481)
-- `weight` and `timeEstimate` duplicated on every saved item (both = timeEstimate)
-- `markInProgress` in `storage.js` calls `localStorage.setItem` directly instead of `setItems`
+Next up (from `docs/ROADMAP.md`):
+
+- Resolve Tier 1 open questions (recency/staleness default, mood presets, topic
+  single vs. array, staleness ceiling) before starting any multi-platform work
+- Pre-publish hallway testing pass
+- Publish to Chrome Web Store and Firefox Add-ons
 
 ## Core design principles (do not break these)
 
@@ -104,8 +116,9 @@ Pre-release cleanup (not user-visible):
 
 ## Working agreements
 
-- All work happens on `dev`. `main` = clean v1.0.0 release. Never commit directly
-  to main.
+- **Branch workflow:** cut a `feature/<name>` or `fix/<name>` branch from `dev`
+  for every piece of work. When tests pass, PR/merge back into `dev`. Never
+  commit directly to `dev` or `main`. `main` = clean releases only.
 - Fix/decide things once in the engine layer; record resolved decisions in
   `docs/ROADMAP.md` under "Resolved."
 - When porting to Swift/Kotlin, port the tests too — including the brute-force

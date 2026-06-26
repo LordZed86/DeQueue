@@ -434,4 +434,47 @@ Wikipedia and many other sites don't set `og:title` — only `document.title`. T
 
 ---
 
-_This log will be updated as new files or features are built._
+---
+
+## Post-Submission: Pre-publish Cleanup & Bug Fixes (2026-06-25)
+
+With the class submission behind us, the goal shifted: get the extension to a state that can actually be published to the Chrome Web Store and Firefox Add-ons. That meant a code audit first, then fixes.
+
+### Repo restructure
+
+- Moved `ROADMAP.md` and `ARCHITECTURE.md` into `docs/` alongside the design doc
+- Added branch workflow: all work now happens on feature/fix branches cut from `dev`, merged back after tests pass; `main` stays clean for releases only
+- `CLAUDE.md` is gitignored — it's local tooling context, not project documentation
+
+### Code audit findings
+
+Reading through every source file with fresh eyes after the submission surfaced a few things that didn't matter for the class but would be wrong to ship publicly:
+
+- **`dequeue_points` was a rogue localStorage key.** Every other piece of stored data goes through `storage.js` — `getItems`, `getSettings`, `getStreak`, `getUnlockedAchievements`, all of it. Points were the one exception: read/written directly in `popup.js` with a hardcoded key string, not in `KEYS`, and not cleaned up by `clearAll()`. The original reasoning in the log was that points are "UI-layer state" — which is fair, but the inconsistency was a maintenance hazard and a bug waiting to happen (`clearAll()` would leave stale points behind).
+- **`markInProgress` and `clearInProgress` were inconsistent with every other write in `storage.js`.** Every other write function calls the private `setItems()` helper. Those two called `localStorage.setItem` directly. No behavior difference, but it was a trap for anyone reading the file and assuming the helper was always used.
+- **`weight` and `timeEstimate` were duplicated on every saved item.** `handleAddSubmit` stored both with the same value: `timeEstimate` for the UI, `weight` for the knapsack. They were always in sync but the redundancy was going to cause confusion when porting the storage schema to other platforms. Removed `weight` from the saved item shape entirely — `scoreItems()` now derives it from `timeEstimate` before passing items to the knapsack. Single source of truth, no behavior change.
+- **A debug `console.log` was still in the init block.** Fired on every popup open. Not a bug, just embarrassing to ship.
+- **ESLint was missing most browser globals.** `setTimeout`, `clearTimeout`, `confirm`, `crypto`, `performance` were all flagged as undefined. They're all standard browser APIs — the config just never declared them. Added the full set.
+
+### Files changed
+
+- `src/utils/storage.js` — added `KEYS.POINTS`, `getPoints()`, `addPoints()`; fixed `markInProgress`/`clearInProgress` to use `setItems`; added `KEYS.POINTS` to `clearAll()`; `scoreItems()` now sets `weight` from `timeEstimate`
+- `src/utils/scoring.js` — `scoreItems()` derives `weight: item.timeEstimate` so callers never need to set it manually
+- `src/popup/popup.js` — imports `getPoints`/`addPoints` from `storage.js`; removed local points functions; removed `weight` from saved item; removed debug log; updated import list
+- `eslint.config.js` — added missing browser globals
+
+### P1 bugs fixed
+
+**Item not marked "visited" when URL is opened.**
+The session card's URL link (`cardUrl`) was a plain `<a>` tag. Clicking it opened the item in a new tab, closed the popup, and left the item completely unmarked — no `inProgress` flag, nothing. If the user read half the article and then closed the tab, re-opening the extension would show no sign that the item had been touched. The fix is a single line: `cardUrl.onclick = () => markInProgress(item.id)`, set each time `renderSessionCard()` draws a new item. The flag fires before the browser follows the link. Simple, and it's what `markInProgress` was always designed to do — it just wasn't wired here.
+
+**Session not reliably restoring after popup close.**
+The `chrome.storage.session` restore path existed and was correct, but `persistSession()` wasn't being called after a restore — only during generate and Done/Skip. If the popup closed and re-opened multiple times without advancing the session, the stored snapshot could drift from the in-memory state. Added `await persistSession()` immediately after reconstructing the `SessionQueue` from a saved session, so the snapshot is always fresh on open. Subtle race, easy fix.
+
+### Still open
+
+- Autofill title hit-or-miss: the extraction waterfall is correct, the likely failure point is the content script not injecting on restricted pages. Needs real failure cases logged before a fix is worth designing.
+
+### Test count
+
+157 tests, 7 files, all passing throughout. No regressions.

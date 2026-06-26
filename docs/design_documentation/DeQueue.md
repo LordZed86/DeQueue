@@ -317,7 +317,7 @@ Nothing else in the app touches either storage API directly — all reads and wr
 localStorage:
   "dequeue_items"         → JSON array of Item objects
   "dequeue_settings"      → JSON object of user preferences
-  "dequeue_points"        → integer (total points; UI-layer state, not in Item model)
+  "dequeue_points"        → integer (total points earned; via getPoints/addPoints in storage.js)
   "dequeue_streak"        → { count: number, lastDate: "YYYY-MM-DD" }
   "dequeue_achievements"  → JSON array of unlocked achievement ID strings
 
@@ -364,9 +364,9 @@ clearAll()              // removes all dequeue_* localStorage keys
 
 `localStorage` persists indefinitely — if the browser crashed mid-session, a stale session object would linger and incorrectly restore on next open. `chrome.storage.session` is automatically scoped to the browser session, so it self-cleans at the right time without requiring explicit lifecycle management.
 
-### Known issue: `dequeue_points` bypasses `storage.js`
+### Points
 
-Points are read/written directly via `localStorage` in `popup.js` — not through `storage.js`, not listed in `KEYS`, and not cleaned up by `clearAll()`. This is inconsistent with every other piece of stored data. Tracked in the pre-release cleanup list.
+Points are stored under `KEYS.POINTS` (`"dequeue_points"`) and accessed via `getPoints()` and `addPoints(n)` in `storage.js`. `clearAll()` removes the key. All reads and writes go through `storage.js` — nothing in `popup.js` touches `localStorage` directly.
 
 ### Open Questions
 
@@ -492,21 +492,23 @@ The extension shipped as v1.0.0. The following issues were identified through ha
 
 ### P1 — User-visible bugs
 
-**Session resets when opening an item in a new tab**
-The `chrome.storage.session` restore path exists in `popup.js` init, but `saveSession` is only called during session generate/advance, not on every render. When the popup re-opens into a fresh JS context (popup was closed), if `saveSession` wasn't called at the right moment the session may not restore. Needs targeted testing to confirm the exact gap and fix the save timing.
+**Session not reliably restoring after popup close** ✅ Fixed 2026-06-25
+`persistSession()` is now called immediately after reconstructing the `SessionQueue` from a saved session on popup open. The snapshot stays fresh across multiple close/reopen cycles without having to advance the session first.
 
-**Item not marked "visited" when URL is opened**
-The `cardUrl` link in the session view opens the item URL but does not call `markInProgress`. That call only happens on End Session. If the user opens the item, reads it, then closes the browser tab without pressing Done, the item stays unmarked — an interrupted session won't surface the in-progress item on re-open. Fix: call `markInProgress` when the URL link is clicked, before navigating away.
+**Item not marked "visited" when URL is opened** ✅ Fixed 2026-06-25
+`cardUrl.onclick` now calls `markInProgress(item.id)` each time `renderSessionCard()` draws a new item. The flag fires before the browser follows the link, so re-opening the popup after clicking a URL correctly surfaces the interrupted item at the top of the queue.
 
-**Autofill title hit-or-miss on some sites**
-The extraction waterfall (`og:title` → `twitter:title` → `cleanDocumentTitle`) is correct in the code. Most likely failure point: content script not injected on restricted URLs, causing `background.js` to silently return null. See Section 6 for detail.
+**Autofill title hit-or-miss on some sites** — open
+The extraction waterfall (`og:title` → `twitter:title` → `cleanDocumentTitle`) is correct in the code. Most likely failure point: content script not injected on restricted URLs, causing `background.js` to silently return null. See Section 6 for detail. Needs real failure cases logged before a fix is worth designing.
 
-### Pre-release cleanup — not user-visible but required before publishing
+### Pre-release cleanup — resolved 2026-06-25
 
-- **`dequeue_points` bypasses `storage.js`**: read/written directly in `popup.js`, not in `KEYS`, not cleared by `clearAll()`. Move into `storage.js` before publishing.
-- **Debug log in production init**: `popup.js` logs `"[DeQueue] restored session:"` on every popup open. Remove before publishing.
-- **`weight` / `timeEstimate` duplication**: both fields stored on every item with the same value. Consolidate before porting the storage schema to other platforms.
-- **`markInProgress` bypasses `setItems` helper**: `storage.js` calls `localStorage.setItem` directly in that function instead of going through the local `setItems` helper, inconsistent with every other write in the file.
+All four items below were fixed before the first publish attempt. Listed here for the record.
+
+- ✅ **`dequeue_points` bypasses `storage.js`**: moved into `storage.js` — `KEYS.POINTS`, `getPoints()`, `addPoints()`, and `clearAll()` now cover it.
+- ✅ **Debug log in production init**: `console.log("[DeQueue] restored session:")` removed from `popup.js`.
+- ✅ **`weight` / `timeEstimate` duplication**: `weight` removed from the saved item shape. `scoreItems()` now derives `weight: item.timeEstimate` before passing items to the knapsack — single source of truth.
+- ✅ **`markInProgress` bypasses `setItems` helper**: fixed to use `setItems` consistently with every other write in `storage.js`.
 
 ---
 
