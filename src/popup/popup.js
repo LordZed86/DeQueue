@@ -1,4 +1,4 @@
-import { getItems, getPendingItems, saveItem, deleteItem, markCompleted, markInProgress, clearInProgress, getSettings, saveSettings, saveSession, loadSession, clearSession, getStreak, updateStreak, getTotalCompleted, getUnlockedAchievements, unlockAchievement } from "../utils/storage.js";
+import { getPendingItems, saveItem, deleteItem, markCompleted, markInProgress, clearInProgress, getSettings, saveSettings, saveSession, loadSession, clearSession, getStreak, updateStreak, getTotalCompleted, getUnlockedAchievements, unlockAchievement, getPoints, addPoints } from "../utils/storage.js";
 import { ACHIEVEMENTS, checkAchievements } from "../utils/achievements.js";
 import { scoreItems } from "../utils/scoring.js";
 import { knapsack } from "../core/knapsack.js";
@@ -72,16 +72,6 @@ function showView(view) {
 }
 
 // ── Points ─────────────────────────────────────────────────
-function getPoints() {
-  return parseInt(localStorage.getItem("dequeue_points") ?? "0", 10);
-}
-
-function addPoints(n) {
-  const total = getPoints() + n;
-  localStorage.setItem("dequeue_points", String(total));
-  renderPoints();
-}
-
 function renderPoints() {
   pointsDisplay.textContent = `${getPoints()} pts`;
   const { count } = getStreak();
@@ -301,8 +291,10 @@ function renderSessionCard() {
     cardUrl.textContent = item.url;
     cardUrl.href = item.url;
     cardUrl.classList.remove("hidden");
+    cardUrl.onclick = () => markInProgress(item.id);
   } else {
     cardUrl.classList.add("hidden");
+    cardUrl.onclick = null;
   }
 
   cardTime.textContent = `${item.timeEstimate} min`;
@@ -353,7 +345,6 @@ function handleAddSubmit(e) {
     url: document.getElementById("input-url").value.trim() || null,
     title,
     timeEstimate: timeRaw,
-    weight: timeRaw, // knapsack uses .weight
     contentType: document.getElementById("input-content-type").value,
     topic: document.getElementById("input-topic").value.trim() || null,
     interest,
@@ -429,6 +420,7 @@ btnDone.addEventListener("click", async () => {
     clearInProgress();
     updateStreak();
     addPoints(10);
+    renderPoints();
     sessionPointsEarned += 10;
     sessionItemsCompleted += 1;
     checkAndUnlock();
@@ -478,10 +470,10 @@ function escHtml(str) {
 // ── Init ───────────────────────────────────────────────────
 (async () => {
   const saved = await loadSession();
-  console.log("[DeQueue] restored session:", saved);
   if (saved?.items?.length) {
     sessionQueue = new SessionQueue(saved.items);
     sessionPointsEarned = saved.pointsEarned ?? 0;
+    await persistSession();
     showView(viewSession);
     renderSessionCard();
   } else {

@@ -14,6 +14,11 @@ export default [
         console: "readonly",
         localStorage: "readonly",
         indexedDB: "readonly",
+        setTimeout: "readonly",
+        clearTimeout: "readonly",
+        confirm: "readonly",
+        crypto: "readonly",
+        performance: "readonly",
         // WebExtension API
         chrome: "readonly",
         browser: "readonly",
