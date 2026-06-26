@@ -10,22 +10,52 @@ Status key: ✅ Resolved · 🔄 In progress · ⏳ Open / not started
 
 ## P1 — Fix in the current extension (1.x.x) first
 
-These are known issues from hallway testing. They affect real usage today and
-should be fixed before P2/P3 feature work or platform porting begins.
+These are known issues from hallway testing and code audit. They affect real
+usage today and should be fixed before P2/P3 feature work or platform porting
+begins.
 
 - ⏳ **Autofill title hit-or-miss on some sites** — extraction waterfall
-  (`og:title` → `twitter:title` → cleaned `document.title`) isn't catching
-  everything. Needs a pass of real failure cases to identify what's slipping
-  through.
-- ⏳ **Session resets when opening an item in a new tab** — opening an item
-  closes the popup, which currently loses session state. Needs the session to
-  persist properly across that interaction (this is part of what
-  `chrome.storage.session` was meant to solve — investigate why it isn't
-  holding here).
-- ⏳ **Mark item as "visited" on open, not just on Done** — so an interrupted
-  session doesn't silently mark something complete that was never finished.
-  Related to the existing in-progress flag/pin behavior — make sure they're
-  actually connected.
+  (`og:title` → `twitter:title` → cleaned `document.title`) looks correct in
+  the code, but the most likely failure point is that the content script isn't
+  injected on some pages (restricted URLs, pages loaded before the extension),
+  causing `background.js` to hit its `lastError` branch and silently return
+  null. Needs real failure cases logged to confirm.
+- ⏳ **Session resets when opening an item in a new tab** — the
+  `chrome.storage.session` restore path exists in `popup.js` init, but
+  `saveSession` is only called during generate/advance, not on every render.
+  If the popup re-opens into a state where `sessionQueue` is null (because
+  it's a fresh JS context), the session won't restore correctly. Needs
+  targeted testing to find the exact gap.
+- ⏳ **Mark item as "visited" on open, not just on Done** — opening the URL
+  via the `cardUrl` link in `popup.js` does not call `markInProgress` at all;
+  that call only happens on End Session. The item stays unmarked if the user
+  closes the tab without finishing. Fix: call `markInProgress` when the URL
+  link is clicked (before navigating away), so a re-opened popup correctly
+  surfaces the interrupted item.
+
+---
+
+## Pre-release cleanup — required before publishing to Chrome Web Store / Firefox Add-ons
+
+Found during code audit. Not user-visible bugs but would be embarrassing or
+cause subtle data issues in the wild.
+
+- ⏳ **`dequeue_points` bypasses `storage.js`** — `popup.js` reads/writes
+  points directly via `localStorage` (not through `storage.js`, not in
+  `KEYS`, not cleaned up by `clearAll()`). Before publishing, move points
+  into `KEYS` and `storage.js` so it's consistent and clearable.
+- ⏳ **Debug `console.log` in production init** — `popup.js` line 481 logs
+  `"[DeQueue] restored session:"` on every popup open. Remove before
+  publishing.
+- ⏳ **`weight` and `timeEstimate` duplicated on every saved item** —
+  `handleAddSubmit` in `popup.js` stores both `timeEstimate` and `weight`
+  with the same value (the knapsack uses `.weight`, the UI uses
+  `.timeEstimate`). Before the storage schema is ported to other platforms,
+  consolidate to one field.
+- ⏳ **`markInProgress` bypasses the `setItems` helper** — `storage.js` lines
+  104–109 call `localStorage.setItem` directly instead of going through the
+  local `setItems` function, inconsistent with every other write in the file.
+  Minor but worth fixing before porting the storage layer.
 
 ---
 
@@ -97,7 +127,7 @@ universal.
 - ⏳ Calendar integration — detect free-time blocks in Google Calendar and
   pre-generate a session that fits the next gap. (Note: this is the one
   feature so far that implies _some_ external account/API access — needs to
-  stay strictly opt-in per the local-first principle in `CLAUDE.md`.)
+  stay strictly opt-in per the local)
 - ⏳ Item organization — folder/directory structure for large queues.
 - ⏳ Algorithm visualizer — show the DP table filling in real time as a
   session generates. Originally noted as "great for the CS class demo," but
