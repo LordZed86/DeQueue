@@ -115,15 +115,12 @@
         <label for="input-topic">Topic</label>
         <input id="input-topic" type="text" placeholder="e.g. research, fun, work" />
 
-        <label for="input-interest">Interest (1–5) <span class="required">*</span></label>
-        <div class="star-row" id="star-row" role="group" aria-label="Interest rating">
-          <button type="button" class="star" data-value="1" aria-label="1 star">★</button>
-          <button type="button" class="star" data-value="2" aria-label="2 stars">★</button>
-          <button type="button" class="star" data-value="3" aria-label="3 stars">★</button>
-          <button type="button" class="star" data-value="4" aria-label="4 stars">★</button>
-          <button type="button" class="star" data-value="5" aria-label="5 stars">★</button>
+        <label for="input-interest">Interest (optional)</label>
+        <div class="interest-toggle-row" id="interest-toggle-row" role="group" aria-label="Interest">
+          <button type="button" class="interest-toggle" data-value="1" aria-label="Low priority" aria-pressed="false">Low priority</button>
+          <button type="button" class="interest-toggle" data-value="3" aria-label="High priority" aria-pressed="false">High priority</button>
         </div>
-        <input id="input-interest" type="hidden" value="3" />
+        <input id="input-interest" type="hidden" value="2" />
 
         <label for="input-mood">Mood tag</label>
         <select id="input-mood">

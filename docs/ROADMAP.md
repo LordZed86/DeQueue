@@ -44,30 +44,45 @@ cause subtle data issues in the wild.
 These affect the engine layer (scoring, storage schema), so they need to be
 decided before porting starts, not independently per platform.
 
-- 🔄 **Recency vs. staleness weight asymmetry.**
+- ✅ **Recency vs. staleness weight asymmetry.** Resolved: staleness wins.
   Under equal weights, recency (favors new items) and staleness (favors old
-  items) cancel out completely — age stops mattering regardless of weight
-  _magnitude_, only the _imbalance_ between the two matters.
-  **Proposed default: staleness wins.** Rationale: the app's entire premise is
-  fighting the "data hoarding" guilt pile — surfacing forgotten old items
-  before they're abandoned. A recency-favoring default would mean new saves
-  perpetually jump the queue while old ones rot forever, which is the exact
-  failure mode the app is designed against.
-  **Status: proposed, not yet confirmed.**
+  items) canceled out completely — age didn't matter regardless of weight
+  _magnitude_, only the _imbalance_ between the two mattered.
+  `DEFAULT_WEIGHTS` changed to `recency: 0.1, staleness: 0.3` (was `0.2/0.2`).
+  Rationale: the app's entire premise is fighting the "data hoarding" guilt
+  pile — surfacing forgotten old items before they're abandoned. A
+  recency-favoring default would mean new saves perpetually jump the queue
+  while old ones rot forever, which is the exact failure mode the app is
+  designed against.
 
-- ⏳ **Mood: fixed presets vs. free-text tag.**
-  Brainstorm doc suggests a fixed set (focus, low-energy, curious, quick)
-  would be easier to match against and better for scoring than free text.
-  Not yet decided.
+- ✅ **Mood: fixed presets vs. free-text tag.** Resolved: fixed presets
+  (focus, low-energy, curious, fun) — confirms existing behavior as
+  permanent rather than placeholder. Easier to match against for scoring
+  than free text, and the add-item/options UI already uses a fixed
+  `<select>`.
 
-- ⏳ **Topic: single tag vs. array of tags.**
-  Array is more flexible (an item can belong to multiple topics) but
-  complicates filter UI. Not yet decided.
+- ✅ **Topic: single tag vs. array of tags.** Resolved: single tag — confirms
+  existing schema/UI as permanent. Array would need a migration (string →
+  array) and a tag-input UI rework for marginal benefit at this stage.
 
-- ⏳ **Staleness ceiling: fixed 30 days vs. user-adjustable.**
-  Current implementation decays staleness linearly to 0 at 30 days. Open
-  question: does this need to be a setting, or is a fixed default fine
-  (with the recency/staleness _weights_ being the adjustable knob instead)?
+- ✅ **Staleness ceiling: fixed 30 days vs. user-adjustable.** Resolved:
+  fixed at 30 days. The four scoring weights (interest/recency/staleness/
+  mood) are already user-adjustable via the options page sliders — that's
+  the intended tuning knob; a second adjustable ceiling adds settings
+  complexity for marginal benefit.
+
+- ✅ **Interest rating: 5-point stars vs. lighter-weight signal.** Resolved:
+  replaced the required 1–5 star picker with an optional 3-point scale
+  (Low / Neutral / High) presented as two toggle buttons that nudge away
+  from a neutral default, rather than a 5-way forced choice. Rationale:
+  ADHD-pattern task friction makes calibrating a 5-point scale at save-time
+  a real paralysis point, and it carries the highest scoring weight (0.5) —
+  a weak/avoided signal there undermined the whole score. Not selecting
+  either button is a fully valid, no-friction choice and leaves the item at
+  neutral (2); pressing the active button again toggles back to neutral. No
+  longer required to save an item. `computeScore` now clamps interest into
+  [1,3] and treats unset as neutral (2) so any stray legacy value degrades
+  safely.
 
 ---
 
