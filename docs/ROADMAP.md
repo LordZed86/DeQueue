@@ -56,10 +56,8 @@ decided before porting starts, not independently per platform.
   designed against.
 
 - ✅ **Mood: fixed presets vs. free-text tag.** Resolved: fixed presets
-  (focus, low-energy, curious, fun) — confirms existing behavior as
-  permanent rather than placeholder. Easier to match against for scoring
-  than free text, and the add-item/options UI already uses a fixed
-  `<select>`.
+  (focus, low-energy, curious, fun). Superseded by the mood redesign below —
+  presets remain, but only as a session-time input, not a per-item tag.
 
 - ✅ **Topic: single tag vs. array of tags.** Resolved: single tag — confirms
   existing schema/UI as permanent. Array would need a migration (string →
@@ -83,6 +81,21 @@ decided before porting starts, not independently per platform.
   longer required to save an item. `computeScore` now clamps interest into
   [1,3] and treats unset as neutral (2) so any stray legacy value degrades
   safely.
+
+- ✅ **Mood: per-item tag removed, session-time bias only.** Mood was
+  previously set twice at two moments with no reason to agree: once at save
+  time (`item.mood`, a guess at a future mood) and once at session time
+  (`currentMood`), scored as an exact match worth `moodMatch: 0.1`. Predicting
+  your own future mood correctly across 4 presets is close to a coin flip, so
+  tagging mood at save-time was more likely to hurt an item's ranking than
+  help it — exactly the kind of speculative micro-decision the app is
+  supposed to remove. `item.mood` and the add-item mood field are gone
+  entirely; the queue-view mood filter (which depended on `item.mood`) is
+  gone too. The session-time mood selector (`mood-select`) survives and now
+  biases scoring using signals every item already has: "low-energy" and
+  "fun" favor lower `timeEstimate`, "focus" and "curious" favor higher
+  `interest`. No mood selected stays neutral (0.5) for every item, same
+  non-penalizing default pattern as the interest/recency fixes above.
 
 ---
 

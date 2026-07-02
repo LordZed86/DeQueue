@@ -7,9 +7,9 @@ const MS_PER_DAY = 1000 * 60 * 60 * 24;
 const item = (overrides = {}) => ({
   id: "test",
   weight: 10,
+  timeEstimate: 10,
   interest: 3,
   addedAt: Date.now(),
-  mood: null,
   ...overrides,
 });
 
@@ -105,28 +105,57 @@ describe("staleness factor", () => {
   });
 });
 
-// ─── Mood match factor ───────────────────────────────────────────────────────
+// ─── Mood bias factor ─────────────────────────────────────────────────────────
+// Moods bias the session using signals every item already has (timeEstimate,
+// interest) rather than a per-item mood tag — see scoring.js for rationale.
 
-describe("mood match factor", () => {
-  it("matching mood produces a higher score than no mood set", () => {
+describe("mood bias factor", () => {
+  it("no mood selected is neutral — same score regardless of item length or interest weight", () => {
     const now = Date.now();
-    const noMood = computeScore(item({ mood: "focus" }), { now, currentMood: null });
-    const matched = computeScore(item({ mood: "focus" }), { now, currentMood: "focus" });
-    expect(matched).toBeGreaterThan(noMood);
+    const weights = { interest: 0, recency: 0, staleness: 0, moodMatch: 1 };
+    const short = computeScore(item({ timeEstimate: 5 }), { now, weights, currentMood: null });
+    const long = computeScore(item({ timeEstimate: 55 }), { now, weights, currentMood: null });
+    expect(short).toBe(long);
+    expect(short).toBe(50);
   });
 
-  it("mismatched mood gives no bonus", () => {
+  it("'low-energy' mood favors shorter items", () => {
     const now = Date.now();
-    const mismatched = computeScore(item({ mood: "focus" }), { now, currentMood: "low-energy" });
-    const noMood = computeScore(item({ mood: "focus" }), { now, currentMood: null });
-    expect(mismatched).toBe(noMood);
+    const weights = { interest: 0, recency: 0, staleness: 0, moodMatch: 1 };
+    const short = computeScore(item({ timeEstimate: 5 }), { now, weights, currentMood: "low-energy" });
+    const long = computeScore(item({ timeEstimate: 55 }), { now, weights, currentMood: "low-energy" });
+    expect(short).toBeGreaterThan(long);
   });
 
-  it("mood match is 0 when item has no mood tag", () => {
+  it("'fun' mood favors shorter items, same as low-energy", () => {
     const now = Date.now();
-    const withMood = computeScore(item({ mood: null }), { now, currentMood: "focus" });
-    const noMood = computeScore(item({ mood: null }), { now, currentMood: null });
-    expect(withMood).toBe(noMood);
+    const weights = { interest: 0, recency: 0, staleness: 0, moodMatch: 1 };
+    const short = computeScore(item({ timeEstimate: 5 }), { now, weights, currentMood: "fun" });
+    const long = computeScore(item({ timeEstimate: 55 }), { now, weights, currentMood: "fun" });
+    expect(short).toBeGreaterThan(long);
+  });
+
+  it("'focus' mood favors higher-interest items regardless of length", () => {
+    const now = Date.now();
+    const weights = { interest: 0, recency: 0, staleness: 0, moodMatch: 1 };
+    const lowInterest = computeScore(item({ interest: 1, timeEstimate: 55 }), { now, weights, currentMood: "focus" });
+    const highInterest = computeScore(item({ interest: 3, timeEstimate: 55 }), { now, weights, currentMood: "focus" });
+    expect(highInterest).toBeGreaterThan(lowInterest);
+  });
+
+  it("'curious' mood favors higher-interest items, same as focus", () => {
+    const now = Date.now();
+    const weights = { interest: 0, recency: 0, staleness: 0, moodMatch: 1 };
+    const lowInterest = computeScore(item({ interest: 1 }), { now, weights, currentMood: "curious" });
+    const highInterest = computeScore(item({ interest: 3 }), { now, weights, currentMood: "curious" });
+    expect(highInterest).toBeGreaterThan(lowInterest);
+  });
+
+  it("unrecognized mood value falls back to neutral", () => {
+    const now = Date.now();
+    const weights = { interest: 0, recency: 0, staleness: 0, moodMatch: 1 };
+    const unknown = computeScore(item({ timeEstimate: 5 }), { now, weights, currentMood: "made-up" });
+    expect(unknown).toBe(50);
   });
 });
 

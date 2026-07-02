@@ -10,7 +10,6 @@ let sessionPointsEarned = 0;
 let sessionItemsCompleted = 0;
 let sessionStartTime = null;
 let filterTopic = "";
-let filterMood = "";
 let sortBy = "score";
 
 // ── DOM refs ───────────────────────────────────────────────
@@ -34,7 +33,6 @@ const achievementsList = document.getElementById("achievements-list");
 const achievementToast = document.getElementById("achievement-toast");
 
 const filterTopicEl = document.getElementById("filter-topic");
-const filterMoodEl = document.getElementById("filter-mood");
 const sortByEl = document.getElementById("sort-by");
 
 const btnGenerate = document.getElementById("btn-generate");
@@ -146,7 +144,6 @@ function applyFilterSort(items) {
   let result = items;
 
   if (filterTopic) result = result.filter((i) => i.topic === filterTopic);
-  if (filterMood)  result = result.filter((i) => i.mood === filterMood);
 
   const scored = scoreItems(result, { currentMood: moodSelect.value || null });
 
@@ -179,7 +176,7 @@ function renderQueueView() {
     itemCount.textContent = "0 items";
   } else {
     emptyState.classList.add("hidden");
-    const label = filterTopic || filterMood
+    const label = filterTopic
       ? `${visible.length} of ${pending.length} item${pending.length !== 1 ? "s" : ""}`
       : `${pending.length} item${pending.length !== 1 ? "s" : ""}`;
     itemCount.textContent = label;
@@ -362,7 +359,6 @@ function handleAddSubmit(e) {
     contentType: document.getElementById("input-content-type").value,
     topic: document.getElementById("input-topic").value.trim() || null,
     interest,
-    mood: document.getElementById("input-mood").value || null,
     addedAt: Date.now(),
     completed: false,
     completedAt: null,
@@ -406,11 +402,6 @@ btnSettings.addEventListener("click", () => {
 // ── Filter / sort wiring ───────────────────────────────────
 filterTopicEl.addEventListener("change", () => {
   filterTopic = filterTopicEl.value;
-  renderQueueView();
-});
-
-filterMoodEl.addEventListener("change", () => {
-  filterMood = filterMoodEl.value;
   renderQueueView();
 });
 
