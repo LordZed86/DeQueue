@@ -478,3 +478,52 @@ The `chrome.storage.session` restore path existed and was correct, but `persistS
 ### Test count
 
 157 tests, 7 files, all passing throughout. No regressions.
+
+---
+
+## Autofill Hint & Tier 1 Scoring Decisions (2026-07-02)
+
+Picked up where the pre-publish cleanup left off: the one remaining P1 bug, then the Tier 1 engine-level design questions blocking multi-platform porting.
+
+### Autofill hint (P1)
+
+The root cause suspected in the previous session was confirmed: content scripts can't be injected into restricted pages (`chrome://`, `about:`, extension/store pages) or into tabs that were already open before the extension was installed or reloaded — a browser-level restriction, not something fixable from the manifest. `background.js` was already handling this correctly (returns `null` via the `chrome.runtime.lastError` branch), but the popup silently left the add-item form empty with no indication why. Added a neutral inline hint ("Couldn't read this page — enter details manually") that renders in that case, so manual entry doesn't read as a mystery failure. Deliberately styled as a neutral hint, not an error — this is expected behavior on those pages, not a mistake the user made.
+
+### Tier 1 decisions resolved
+
+All four open engine-level questions from `ROADMAP.md` got resolved in one pass, since they were blocking platform porting:
+
+- **Recency/staleness weight asymmetry.** Confirmed the diagnosis from the design doc: under equal weights the two factors cancel out algebraically (`w×(1-f) + w×f = w`), so item age had zero effect on score regardless of weight magnitude. Changed `DEFAULT_WEIGHTS` to `recency: 0.1, staleness: 0.3` (was `0.2/0.2`) so staleness wins — old, forgotten items get surfaced instead of perpetually losing to new saves, matching the app's core anti-hoarding premise.
+- **Mood, topic, staleness ceiling.** All three confirmed as-is (fixed mood presets, single topic tag, fixed 30-day ceiling) — the existing behavior was already the right call, they just needed to be documented as resolved rather than left as open questions.
+
+### Interest rating redesign (not originally in ROADMAP, added mid-session)
+
+A design concern came up that the required 1–5 star picker was itself a source of task-initiation friction — ADHD research (see `docs/proposal.md` references) specifically flags difficulty making calibrated judgment calls as a common symptom, and `interest` carries the heaviest scoring weight (0.5), so a rating the user avoided or picked arbitrarily under time pressure would undermine the whole score.
+
+Replaced the 5-star picker with an optional 3-point scale (Low / Neutral / High) shown as two toggle buttons that nudge away from a neutral default rather than forcing a 5-way choice:
+
+- Neither button pressed → stays at neutral (2), which is now a fully valid, zero-friction outcome
+- Press Low or High → nudges to 1 or 3
+- Press the active button again → returns to neutral
+- No longer a required field to save an item
+
+`computeScore` in `scoring.js` clamps interest into `[1,3]` and treats unset as neutral (2), so any stray out-of-range value degrades safely instead of skewing the score.
+
+Verified the toggle behavior (default state, click-to-highlight, switch, toggle-off-to-neutral, save-without-touching) against the real `popup.html`/`popup.js` using a throwaway jsdom harness rather than a full Playwright setup, since there's no dev server for this popup-only extension — deleted after confirming all five scenarios passed.
+
+### Files changed
+
+- `src/utils/scoring.js` — `DEFAULT_WEIGHTS` (recency/staleness rebalanced), `computeScore` interest clamping/neutral-default
+- `src/utils/scoring.test.js` — updated interest-factor test for the new 1–3 range, added clamp/neutral-default tests
+- `src/popup/popup.html`, `popup.css`, `popup.js` — autofill hint element; star row replaced with the interest toggle; interest no longer required to submit
+- `src/options/options.html` — updated static recency/staleness slider defaults to match the new weights
+- `docs/ROADMAP.md` — two stale P1 items and four cleanup items corrected from ⏳ to ✅ (they were already fixed in the previous session but the doc hadn't caught up); Tier 1 section fully resolved
+- `docs/design_documentation/DeQueue.md` — item schema, scoring section, and Decisions Log table synced to match
+
+### Still open
+
+- None from this pass — the ROADMAP.md P1 list and Tier 1 list are both fully resolved. Next up per ROADMAP.md: pre-publish hallway testing pass, then P2 features.
+
+### Test count
+
+159 tests, 7 files, all passing throughout. No regressions.
