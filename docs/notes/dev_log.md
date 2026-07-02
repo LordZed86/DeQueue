@@ -527,3 +527,44 @@ Verified the toggle behavior (default state, click-to-highlight, switch, toggle-
 ### Test count
 
 159 tests, 7 files, all passing throughout. No regressions.
+
+---
+
+## Mood Redesign: Per-Item Tag → Session-Time Bias (2026-07-02)
+
+While building the app, I raised a concern about the mood feature myself — it felt "bolted on," and even though the concept made sense, I couldn't picture using it in practice. Talking through why surfaced the actual problem: mood was captured at two moments that have no reason to agree.
+
+### The two-moments problem
+
+`item.mood` was set once, at save time — asking "what mood is this item for?" days or weeks before it would ever be read. `currentMood` was set again at session-generation time — "what's my mood right now?" Scoring only rewarded an exact match between the two (`moodMatch: 0.1`, binary), which means predicting your own future mood correctly across 4 presets is close to a coin flip. Tagging an item's mood at save time was, on net, more likely to hurt its future ranking than help it — the opposite of what a scoring bonus should do, and exactly the kind of speculative micro-decision the app exists to remove. This is the same category of problem as the interest-rating friction fixed earlier this session, just less obvious because it wasn't a required field.
+
+### The fix
+
+Removed `item.mood` and the per-item mood tag entirely — no more mood field on the add-item form, and the queue-view mood filter (which depended on `item.mood`) is gone too, since it would otherwise have gone permanently dead with nothing to filter against.
+
+The session-time mood picker survives (`mood-select` on the queue view, `Settings.defaultMood`), but instead of exact-matching a tag that no longer exists, it now biases scoring using signals every item already has:
+
+- **"Low energy" / "Fun"** → favor shorter items (lower `timeEstimate`)
+- **"Focus" / "Curious"** → favor higher-interest items
+- **No mood selected** → neutral (0.5) for every item, same non-penalizing default used for the interest redesign
+
+This reframes the question from "predict your future mood" (hard, speculative) to "how much are you up for right now" (easy, answerable in the moment) — and it reuses data that already exists instead of asking for a new judgment call.
+
+### Files changed
+
+- `src/utils/scoring.js` — `moodMatch` factor reworked from exact-tag-match to a `timeEstimate`/`interest`-based bias (`MOOD_BIAS` lookup table); `computeScore`'s `item` param no longer expects `mood`
+- `src/utils/scoring.test.js` — replaced the "mood match factor" describe block with "mood bias factor" tests covering all four presets, the neutral no-mood case, and unrecognized mood fallback; added `timeEstimate` to the test item helper
+- `src/core/pipeline.test.js` — replaced the mood-match integration test with two tests exercising the new bias against realistic knapsack/queue output; removed the now-dead `mood` param from `makeItem`
+- `src/popup/popup.html` — removed the add-item mood `<select>` and the queue-view mood filter `<select>`; session mood picker unchanged
+- `src/popup/popup.js` — removed `filterMood` state, `filterMoodEl` wiring, and `mood` from the saved item shape in `handleAddSubmit`
+- `docs/ROADMAP.md`, `docs/design_documentation/DeQueue.md` — synced to describe the new mechanic; old "Mood: fixed presets vs. free text" resolution marked as superseded rather than deleted, since it's still true, just incomplete now
+
+Verified against the real markup/JS with a throwaway jsdom harness: confirmed no mood field on add-item, no mood filter on queue view, session mood selector still present, saved items never carry `mood`, and selecting "Low energy" correctly re-sorts shorter items first — deleted after all five checks passed.
+
+### Still open
+
+- None from this pass.
+
+### Test count
+
+163 tests, 7 files, all passing throughout. No regressions.
