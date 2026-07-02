@@ -42,6 +42,7 @@ const btnAddItem = document.getElementById("btn-add-item");
 const btnBackFromAdd = document.getElementById("btn-back-from-add");
 const addForm = document.getElementById("add-form");
 const addError = document.getElementById("add-error");
+const autofillHint = document.getElementById("autofill-hint");
 
 const btnEndSession = document.getElementById("btn-end-session");
 const sessionProgress = document.getElementById("session-progress");
@@ -308,11 +309,21 @@ function resetAddForm() {
   renderStars(3);
   addError.classList.add("hidden");
   addError.textContent = "";
+  autofillHint.classList.add("hidden");
+  autofillHint.textContent = "";
 
   // Ask the background worker to relay page metadata from the content script.
   // In MV3 the popup cannot message content scripts directly.
   chrome.runtime?.sendMessage({ type: "GET_PAGE_META" }, (meta) => {
-    if (chrome.runtime.lastError || !meta) return;
+    if (chrome.runtime.lastError || !meta) {
+      // Content script isn't reachable on this tab — restricted page
+      // (chrome://, store pages) or a tab opened before the extension
+      // loaded. Not an error; just let the user know autofill won't work
+      // here so manual entry doesn't feel like a silent failure.
+      autofillHint.textContent = "Couldn't read this page — enter details manually.";
+      autofillHint.classList.remove("hidden");
+      return;
+    }
     if (meta.url) document.getElementById("input-url").value = meta.url;
     if (meta.title) document.getElementById("input-title").value = meta.title;
     if (meta.timeEstimate) document.getElementById("input-time").value = meta.timeEstimate;
