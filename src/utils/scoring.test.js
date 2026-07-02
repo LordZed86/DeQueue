@@ -42,10 +42,24 @@ describe("interest factor", () => {
   it("higher interest produces a higher score, all else equal", () => {
     const now = Date.now();
     const low = computeScore(item({ interest: 1, addedAt: now }), { now });
-    const mid = computeScore(item({ interest: 3, addedAt: now }), { now });
-    const high = computeScore(item({ interest: 5, addedAt: now }), { now });
+    const mid = computeScore(item({ interest: 2, addedAt: now }), { now });
+    const high = computeScore(item({ interest: 3, addedAt: now }), { now });
     expect(mid).toBeGreaterThan(low);
     expect(high).toBeGreaterThan(mid);
+  });
+
+  it("unset interest is treated as neutral (2)", () => {
+    const now = Date.now();
+    const unset = computeScore(item({ interest: undefined, addedAt: now }), { now });
+    const neutral = computeScore(item({ interest: 2, addedAt: now }), { now });
+    expect(unset).toBe(neutral);
+  });
+
+  it("out-of-range interest clamps into 1–3", () => {
+    const now = Date.now();
+    const tooHigh = computeScore(item({ interest: 5, addedAt: now }), { now });
+    const high = computeScore(item({ interest: 3, addedAt: now }), { now });
+    expect(tooHigh).toBe(high);
   });
 });
 
