@@ -98,14 +98,14 @@ Each saved item is an object with the following shape:
  * @property {string}   title           - Display title
  * @property {string}   [description]   - Short summary or excerpt
  * @property {number}   timeEstimate    - Estimated time to complete, in whole minutes
- * @property {string}   [topic]         - User-assigned topic tag (e.g. "research", "fun")
- * @property {number}   interest        - User-assigned interest rating (1–5)
- * @property {string}   [mood]          - Optional mood/energy tag (e.g. "focus", "low-energy")
+ * @property {string}   [topic]         - User-assigned topic tag (e.g. "research", "fun") — single tag, not an array (Resolved, see §10)
+ * @property {number}   interest        - Interest rating 1–3 (1 = low, 2 = neutral/default, 3 = high). Optional at save time — defaults to 2 if the user doesn't touch it (Resolved, see §10)
+ * @property {string}   [mood]          - Mood/energy tag from a fixed preset list (e.g. "focus", "low-energy") — not free text (Resolved, see §10)
  * @property {string}   contentType     - "article" | "video" | "other"
  * @property {number}   addedAt         - Unix timestamp of when the item was saved
  * @property {number}   [completedAt]   - Unix timestamp of completion, null if pending
  * @property {boolean}  completed       - Whether the item has been consumed
- * @property {number}   priority        - Computed value score (see scoring.js) — not user-set
+ * @property {number}   value           - Computed priority score (see scoring.js) — not user-set; attached by scoreItems(), not part of the stored item
  */
 ```
 
@@ -122,13 +122,12 @@ User preferences stored in localStorage under `dequeue_settings`:
  */
 ```
 
-### Known issue: `weight` / `timeEstimate` duplication
+### Resolved: `weight` / `timeEstimate` duplication
 
-Every saved item currently stores both `weight` (used by the knapsack) and `timeEstimate` (used by the UI) with the same value. They're set together in `handleAddSubmit` and always in sync, but the redundancy adds confusion and will create friction when porting the storage schema to other platforms. Tracked in the pre-release cleanup list — consolidate to one field before the storage layer is ported.
+Previously every saved item stored both `weight` (used by the knapsack) and `timeEstimate` (used by the UI) with the same value. `weight` has been removed from the stored item shape — `scoreItems()` now derives `weight: item.timeEstimate` at scoring time, so there's a single source of truth on disk.
 
 ### Open Questions
 
-- **`topic`**: single tag vs. array of tags — array is more flexible but complicates filter UI. Unresolved; tracked in ROADMAP.md Tier 1.
 - **Long-form items (>60 min)**: handled as a separate "long-form library" outside the knapsack (P2). Items over the 60-minute cap are filtered before the DP table is built, so they're effectively invisible to the current session generator. The long-form library surfaces them separately when the user has open-ended time.
 
 ---
@@ -141,7 +140,7 @@ The session generator is a classic **0/1 knapsack**: given a set of items each w
 
 - **Capacity** = user's time budget in minutes, capped at `MAX_BUDGET_MINUTES` (60)
 - **Weight** of each item = `timeEstimate` (whole minutes; fractional weights not supported)
-- **Value** of each item = computed `priority` score from `utils/scoring.js`
+- **Value** of each item = computed `.value` score from `utils/scoring.js`
 
 The algorithm lives entirely in `core/knapsack.js` and has no dependencies on storage, the DOM, or any other module.
 
@@ -234,9 +233,9 @@ Each item's priority score is computed by `utils/scoring.js` and attached as `.v
 <!--prettier-ignore-->
 | Factor | Source | Notes |
 | --- | --- | --- |
-| `interest` | User-assigned (1–5) | Normalized to [0, 1] as `(rating - 1) / 4` |
+| `interest` | User-assigned (1–3, optional, defaults to 2) | Normalized to [0, 1] as `(clamp(rating, 1, 3) - 1) / 2`; unset treated as 2 |
 | `recency` | Derived from `addedAt` | 1.0 today → 0.0 at 30 days (linear decay) |
-| `staleness` | Derived from `addedAt` | Inverse of recency — items sitting longest get the boost; ceiling 30 days |
+| `staleness` | Derived from `addedAt` | Inverse of recency — items sitting longest get the boost; ceiling 30 days (fixed, see §10) |
 | `mood` match | User's current mood vs item's mood tag | Binary: 1.0 if match, 0 otherwise |
 
 Each factor is normalized to [0, 1] before weighting so no factor can dominate by scale. Final score: `round(weighted_sum × 100)` → integer in [0, 100].
@@ -246,20 +245,28 @@ Each factor is normalized to [0, 1] before weighting so no factor can dominate b
 ```js
 export const DEFAULT_WEIGHTS = {
   interest: 0.5,
-  recency: 0.2,
-  staleness: 0.2,
+  recency: 0.1,
+  staleness: 0.3,
   moodMatch: 0.1,
 };
 ```
 
-### Important: recency/staleness symmetry
+### Resolved: recency/staleness asymmetry
 
-Under equal weights, recency and staleness cancel each other out algebraically — the combined contribution is `0.2 × (1 - f) + 0.2 × f = 0.2` regardless of item age. To differentiate items by age, the weights must be asymmetric. This is a known open question for the options page.
+Recency and staleness are opposing forces (new-first vs. old-first). Under **equal** weights they cancel out algebraically — the combined contribution is `w × (1 - f) + w × f = w` regardless of item age, so age has zero effect on score no matter how large `w` is; only the _difference_ between the two weights matters. Resolved by making staleness win by default (`0.3` vs. `0.1`) so forgotten old items get surfaced instead of perpetually losing to new saves — the app's core purpose is fighting the guilt pile. Both remain user-adjustable via the options page sliders.
+
+### Interest rating: 5 stars → optional 3-point toggle
+
+The original 1–5 star picker required a deliberate calibration decision on every save and was a required field. That's exactly the kind of task-initiation friction the app is designed to remove, and `interest` carries the heaviest default weight (0.5) — an avoided or arbitrary rating there undermined the whole score. Replaced with an optional 3-point scale (Low / Neutral / High) shown as two toggle buttons that nudge away from a neutral default (2); pressing the active button again returns to neutral. Not interacting with it at all is a fully valid, zero-friction choice — the item is saved with `interest: 2` and scores as neutral on that axis.
+
+### Other resolved Tier 1 questions
+
+- **Staleness ceiling**: kept fixed at 30 days. The four scoring weights are already user-adjustable via the options page sliders — that's the intended tuning knob; a second adjustable ceiling would add settings complexity for marginal benefit.
+- **Mood**: fixed presets (focus, low-energy, curious, fun), not free text — easier to match against for scoring, and the UI already used a fixed `<select>`.
+- **Topic**: single tag, not an array — matches the existing schema/UI; an array would need a migration and a tag-input UI rework.
 
 ### Open Questions
 
-- **Recency vs. staleness default**: under equal weights (0.2 each) the two factors cancel out algebraically — `0.2×(1-f) + 0.2×f = 0.2` regardless of age. To differentiate items by age the weights must be asymmetric. Proposed default: **staleness wins** (favor old items over new), rationale being the app's core purpose is fighting the guilt pile — new saves should not perpetually jump the queue. Not yet confirmed; tracked in ROADMAP.md Tier 1.
-- **Staleness ceiling**: currently hard-coded at 30 days. May be user-adjustable in a future options page update; for now the recency/staleness weights are the adjustable knob.
 - **Decay curve**: currently linear. Logarithmic would age items more gently. Deferred to P2 weight experimentation UI.
 
 ---
@@ -287,9 +294,9 @@ The content script (`content/content.js`) runs on the active tab when the user o
 - Let the user override anything before saving
 - Never block saving on failed extraction — manual entry is always the fallback
 
-### Known issue: content script not injected on some pages
+### Resolved: content script not injected on some pages
 
-The most likely cause of missing autofill is that the content script isn't injected on restricted URLs (browser internal pages, pages that loaded before the extension was installed). In those cases `background.js` hits its `chrome.runtime.lastError` branch and silently returns null — the form stays empty. No crash, correct graceful degradation, but the failure is invisible to the user. Needs real failure cases logged to confirm before a fix is designed.
+Root cause confirmed: content scripts can't be injected into restricted pages (`chrome://`, `about:`, extension/store pages) or into tabs that were already open before the extension was installed/reloaded — this is a browser-level restriction, not something fixable from the manifest. In those cases `background.js` hits its `chrome.runtime.lastError` branch and returns null. Previously the form just stayed silently empty; now the add-item view shows a neutral inline hint ("Couldn't read this page — enter details manually") distinguishing that case from a real error, so manual entry doesn't feel like a mystery failure.
 
 ### Open Questions
 
@@ -432,13 +439,13 @@ Remaining / future:
 
 ## 9. Testing Plan
 
-### Current test suite (157 tests, all passing)
+### Current test suite (159 tests, all passing)
 
 <!--prettier-ignore-->
 | File | Tests | What it covers |
 | --- | --- | --- |
 | `core/knapsack.test.js` | 17 | DP vs. brute-force agreement, edge cases, known optimal solutions |
-| `utils/scoring.test.js` | 17 | Each factor in isolation, output range, weight system, `scoreItems` immutability |
+| `utils/scoring.test.js` | 19 | Each factor in isolation (including interest clamping/neutral-default), output range, weight system, `scoreItems` immutability |
 | `utils/storage.test.js` | 35 | All CRUD operations, settings merge, corrupt-data resilience, `clearAll` scoping, streak logic |
 | `core/queue.test.js` | 23 | `peek`/`dequeue`/`skip`/`toArray`, skip cycling, `buildSessionQueue` sort order |
 | `content/content.test.js` | 42 | Metadata extraction (title, description, type, duration, topic), duration parsers, `cleanDocumentTitle` |
@@ -469,7 +476,7 @@ Remaining / future:
 | # | Question | Status |
 | --- | --- | --- |
 | 1 | Safari support — P2 stretch or cut entirely? | **Decided: P2 stretch** |
-| 2 | Single topic tag vs. array of tags | Open — array is more flexible but complicates filter UI; deferred to P2 |
+| 2 | Single topic tag vs. array of tags | **Decided: single tag** — matches existing schema/UI; array deferred, would need a migration + tag-input UI rework |
 | 3 | Value function weights — hardcoded defaults or user-configurable? | **Decided: user-configurable via options page weight sliders with auto-normalization** |
 | 4 | Decay curve shape (linear vs. logarithmic) | Open — logarithmic would age items more gently; deferred to P2 weight experimentation UI |
 | 5 | Max supported time budget | **Decided: 60 minutes** — gap-filling use case, not day-planning |
@@ -477,12 +484,15 @@ Remaining / future:
 | 7 | Export/import of item data | **Decided: P2** — JSON export/import planned; format TBD (plain JSON or Pocket/Instapaper compatible) |
 | 8 | YouTube-specific scraper — worth maintaining? | Open — implemented as best-effort; falls back to manual if YouTube's DOM changes |
 | 9 | Gamification — points counter only, or visual feedback too? | **Decided: points + streak + achievements shipped** — 10 pts/item, 🔥 streak in header, 6 milestone achievements with toast notifications and panel UI |
-| 10 | Recency vs. staleness weight asymmetry — which direction should the default favor? | **Proposed: staleness wins** — favoring old items matches the app's anti-guilt-pile purpose; not yet confirmed (ROADMAP Tier 1) |
+| 10 | Recency vs. staleness weight asymmetry — which direction should the default favor? | **Decided: staleness wins** — `DEFAULT_WEIGHTS` set to `recency: 0.1, staleness: 0.3`; favoring old items matches the app's anti-guilt-pile purpose |
 | 11 | DP table approach — 1D rolling array vs. 2D | **Decided: 2D** — backtracking requires full row history to recover which items were selected |
 | 12 | Session presentation — one at a time vs. full list | **Decided: one at a time** — reduces choice paralysis, which is the same problem the whole app addresses |
 | 13 | Skip behavior — discard or cycle to back? | **Decided: cycle to back** — item stays available this session, never forces the user into a dead end |
 | 14 | Session state storage — localStorage vs. chrome.storage.session | **Decided: chrome.storage.session** — survives popup close/tab switch, auto-clears on browser restart; localStorage would persist stale sessions |
 | 15 | Long-form items (>60 min) — force into algorithm or separate space? | **Decided: separate long-form library (P2)** — items outside the knapsack presented when the user has open-ended time; removes decision anxiety without breaking the budget model |
+| 16 | Mood — fixed presets vs. free-text tag? | **Decided: fixed presets** (focus, low-energy, curious, fun) — easier to match against for scoring than free text |
+| 17 | Staleness ceiling — fixed 30 days vs. user-adjustable? | **Decided: fixed at 30 days** — the scoring weights are already the user-adjustable tuning knob |
+| 18 | Interest rating — 5-point stars vs. lighter-weight signal? | **Decided: optional 3-point toggle** (Low/Neutral/High), defaults to neutral, no longer required to save — reduces save-time decision friction; see §5 |
 
 ---
 
@@ -498,8 +508,8 @@ The extension shipped as v1.0.0. The following issues were identified through ha
 **Item not marked "visited" when URL is opened** ✅ Fixed 2026-06-25
 `cardUrl.onclick` now calls `markInProgress(item.id)` each time `renderSessionCard()` draws a new item. The flag fires before the browser follows the link, so re-opening the popup after clicking a URL correctly surfaces the interrupted item at the top of the queue.
 
-**Autofill title hit-or-miss on some sites** — open
-The extraction waterfall (`og:title` → `twitter:title` → `cleanDocumentTitle`) is correct in the code. Most likely failure point: content script not injected on restricted URLs, causing `background.js` to silently return null. See Section 6 for detail. Needs real failure cases logged before a fix is worth designing.
+**Autofill title hit-or-miss on some sites** ✅ Mitigated 2026-07-02
+Root cause confirmed: content scripts can't inject on restricted pages or tabs opened before the extension loaded — a browser-level limitation, not fixable from the manifest. The add-item view now shows a neutral inline hint when autofill can't read the page, so it no longer reads as a silent, unexplained failure. See Section 6 for detail.
 
 ### Pre-release cleanup — resolved 2026-06-25
 
