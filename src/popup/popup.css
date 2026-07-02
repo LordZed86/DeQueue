@@ -17,7 +17,6 @@
   --color-text-muted: #888;
   --color-border: #2a2a4a;
   --color-star-on: #f5c518;
-  --color-star-off: #444;
   --radius: 8px;
   --radius-sm: 4px;
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -344,29 +343,41 @@ select:focus {
   border-color: var(--color-accent);
 }
 
-/* ── Star rating ──────────────────────────────────────────── */
-.star-row {
+/* ── Interest toggle ──────────────────────────────────────── */
+.interest-toggle-row {
   display: flex;
-  gap: 4px;
+  gap: 6px;
 }
 
-.star {
+.interest-toggle {
+  flex: 1;
   background: transparent;
-  border: none;
-  color: var(--color-star-off);
-  font-size: 22px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  font-size: 12px;
+  padding: 6px 8px;
   cursor: pointer;
-  padding: 0;
-  line-height: 1;
-  transition: color 0.1s, transform 0.1s;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
 
-.star.active {
+.interest-toggle:hover {
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
+
+.interest-toggle.active {
   color: var(--color-star-on);
+  border-color: var(--color-star-on);
+  background: rgba(245, 197, 24, 0.08);
 }
 
-.star:hover {
-  transform: scale(1.15);
+.interest-badge {
+  color: var(--color-text-muted);
+}
+
+.interest-badge--high {
+  color: var(--color-star-on);
 }
 
 /* ── Error ────────────────────────────────────────────────── */
