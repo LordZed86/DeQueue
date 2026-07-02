@@ -20,18 +20,6 @@ begins.
   injected on some pages (restricted URLs, pages loaded before the extension),
   causing `background.js` to hit its `lastError` branch and silently return
   null. Needs real failure cases logged to confirm.
-- ⏳ **Session resets when opening an item in a new tab** — the
-  `chrome.storage.session` restore path exists in `popup.js` init, but
-  `saveSession` is only called during generate/advance, not on every render.
-  If the popup re-opens into a state where `sessionQueue` is null (because
-  it's a fresh JS context), the session won't restore correctly. Needs
-  targeted testing to find the exact gap.
-- ⏳ **Mark item as "visited" on open, not just on Done** — opening the URL
-  via the `cardUrl` link in `popup.js` does not call `markInProgress` at all;
-  that call only happens on End Session. The item stays unmarked if the user
-  closes the tab without finishing. Fix: call `markInProgress` when the URL
-  link is clicked (before navigating away), so a re-opened popup correctly
-  surfaces the interrupted item.
 
 ---
 
@@ -40,22 +28,14 @@ begins.
 Found during code audit. Not user-visible bugs but would be embarrassing or
 cause subtle data issues in the wild.
 
-- ⏳ **`dequeue_points` bypasses `storage.js`** — `popup.js` reads/writes
-  points directly via `localStorage` (not through `storage.js`, not in
-  `KEYS`, not cleaned up by `clearAll()`). Before publishing, move points
-  into `KEYS` and `storage.js` so it's consistent and clearable.
-- ⏳ **Debug `console.log` in production init** — `popup.js` line 481 logs
-  `"[DeQueue] restored session:"` on every popup open. Remove before
-  publishing.
-- ⏳ **`weight` and `timeEstimate` duplicated on every saved item** —
-  `handleAddSubmit` in `popup.js` stores both `timeEstimate` and `weight`
-  with the same value (the knapsack uses `.weight`, the UI uses
-  `.timeEstimate`). Before the storage schema is ported to other platforms,
-  consolidate to one field.
-- ⏳ **`markInProgress` bypasses the `setItems` helper** — `storage.js` lines
-  104–109 call `localStorage.setItem` directly instead of going through the
-  local `setItems` function, inconsistent with every other write in the file.
-  Minor but worth fixing before porting the storage layer.
+- ✅ **`dequeue_points` bypasses `storage.js`** — moved into `KEYS.POINTS` /
+  `getPoints` / `addPoints`, cleaned up by `clearAll()`.
+- ✅ **Debug `console.log` in production init** — removed from popup init.
+- ✅ **`weight` and `timeEstimate` duplicated on every saved item** — `weight`
+  removed from the saved item shape; derived in `scoreItems` from
+  `timeEstimate`.
+- ✅ **`markInProgress` bypasses the `setItems` helper** — now uses `setItems`
+  consistently.
 
 ---
 
