@@ -3,17 +3,24 @@
  * These can be overridden via the options page in a future iteration.
  *
  * @typedef {Object} ScoringWeights
- * @property {number} interest   - Weight for the user's interest rating (1–5)
+ * @property {number} interest   - Weight for the user's interest rating (1–3)
  * @property {number} recency    - Weight for how recently the item was added
  * @property {number} staleness  - Weight for items that have been sitting a long time
  * @property {number} moodMatch  - Bonus when current mood matches the item's mood tag
  */
 
-/** @type {ScoringWeights} */
+/**
+ * Recency and staleness are opposing forces (new-first vs. old-first); equal
+ * weights cancel out completely regardless of magnitude, leaving age with no
+ * effect on score at all. Staleness is weighted higher by default so old,
+ * forgotten items get surfaced instead of perpetually losing to new saves —
+ * that's the core failure mode DeQueue is designed against.
+ * @type {ScoringWeights}
+ */
 export const DEFAULT_WEIGHTS = {
   interest: 0.5,
-  recency: 0.2,
-  staleness: 0.2,
+  recency: 0.1,
+  staleness: 0.3,
   moodMatch: 0.1,
 };
 
@@ -33,7 +40,7 @@ const STALENESS_CEILING_DAYS = 30;
  * by 100 and rounded to an integer so it plays nicely as a knapsack value.
  *
  * Factors:
- *  - interest:   user's 1–5 rating, normalized to [0, 1]
+ *  - interest:   user's 1–3 rating (defaults to 2/neutral if unset), normalized to [0, 1]
  *  - recency:    items added today score 1.0, decaying linearly to 0 at STALENESS_CEILING_DAYS
  *  - staleness:  inverse of recency — items sitting the longest get the boost
  *  - moodMatch:  1.0 if currentMood matches item.mood, 0 otherwise
@@ -52,8 +59,10 @@ const STALENESS_CEILING_DAYS = 30;
 export function computeScore(item, opts = {}) {
   const { currentMood = null, now = Date.now(), weights = DEFAULT_WEIGHTS } = opts;
 
-  // Interest: normalize 1–5 → 0–1
-  const interestScore = (item.interest - 1) / 4;
+  // Interest: normalize 1–3 → 0–1. Unset/out-of-range values fall back to
+  // the neutral default (2) rather than skewing the score in either direction.
+  const interestRaw = Math.min(Math.max(item.interest ?? 2, 1), 3);
+  const interestScore = (interestRaw - 1) / 2;
 
   const ageInDays = (now - item.addedAt) / MS_PER_DAY;
   const ageFraction = Math.min(ageInDays / STALENESS_CEILING_DAYS, 1);

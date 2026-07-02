@@ -61,7 +61,7 @@ const btnDone = document.getElementById("btn-done");
 const btnSkip = document.getElementById("btn-skip");
 const btnSessionDone = document.getElementById("btn-session-done");
 
-const starRow = document.getElementById("star-row");
+const interestToggleRow = document.getElementById("interest-toggle-row");
 const interestInput = document.getElementById("input-interest");
 
 // ── View helpers ───────────────────────────────────────────
@@ -189,6 +189,12 @@ function renderQueueView() {
   renderPoints();
 }
 
+function interestLabel(interest) {
+  if (interest === 1) return `<span class="interest-badge interest-badge--low">Low priority</span>`;
+  if (interest === 3) return `<span class="interest-badge interest-badge--high">High priority</span>`;
+  return "";
+}
+
 function buildItemCard(item) {
   const li = document.createElement("li");
   li.className = "item-card" + (item.inProgress ? " item-card--inprogress" : "");
@@ -198,7 +204,7 @@ function buildItemCard(item) {
       <div class="item-card-meta">
         <span>${item.timeEstimate} min</span>
         ${item.topic ? `<span>${escHtml(item.topic)}</span>` : ""}
-        <span>${"★".repeat(item.interest)}</span>
+        ${interestLabel(item.interest)}
         ${item.inProgress ? `<span class="badge-inprogress">In progress</span>` : ""}
       </div>
     </div>
@@ -305,8 +311,8 @@ function renderSessionCard() {
 // ── Add item form ──────────────────────────────────────────
 function resetAddForm() {
   addForm.reset();
-  interestInput.value = "3";
-  renderStars(3);
+  interestInput.value = "2";
+  renderInterestToggle("2");
   addError.classList.add("hidden");
   addError.textContent = "";
   autofillHint.classList.add("hidden");
@@ -336,7 +342,8 @@ function handleAddSubmit(e) {
 
   const title = document.getElementById("input-title").value.trim();
   const timeRaw = parseInt(document.getElementById("input-time").value, 10);
-  const interest = parseInt(interestInput.value, 10);
+  const interestParsed = parseInt(interestInput.value, 10);
+  const interest = interestParsed >= 1 && interestParsed <= 3 ? interestParsed : 2;
 
   if (!title) {
     showAddError("Title is required.");
@@ -344,10 +351,6 @@ function handleAddSubmit(e) {
   }
   if (!timeRaw || timeRaw < 1) {
     showAddError("Time estimate must be at least 1 minute.");
-    return;
-  }
-  if (!interest || interest < 1 || interest > 5) {
-    showAddError("Please select an interest rating.");
     return;
   }
 
@@ -375,19 +378,25 @@ function showAddError(msg) {
   addError.classList.remove("hidden");
 }
 
-// ── Star rating ────────────────────────────────────────────
-function renderStars(value) {
-  starRow.querySelectorAll(".star").forEach((btn) => {
-    btn.classList.toggle("active", parseInt(btn.dataset.value, 10) <= value);
+// ── Interest toggle ─────────────────────────────────────────
+// Neutral (2) by default. Pressing Low or High nudges away from neutral;
+// pressing the same button again returns to neutral. Skipping it entirely
+// is a valid, no-friction choice — interest never blocks saving an item.
+function renderInterestToggle(value) {
+  interestToggleRow.querySelectorAll(".interest-toggle").forEach((btn) => {
+    const isActive = btn.dataset.value === String(value) && String(value) !== "2";
+    btn.classList.toggle("active", isActive);
+    btn.setAttribute("aria-pressed", String(isActive));
   });
 }
 
-starRow.addEventListener("click", (e) => {
-  const btn = e.target.closest(".star");
+interestToggleRow.addEventListener("click", (e) => {
+  const btn = e.target.closest(".interest-toggle");
   if (!btn) return;
-  const value = parseInt(btn.dataset.value, 10);
-  interestInput.value = value;
-  renderStars(value);
+  const clicked = btn.dataset.value;
+  const next = interestInput.value === clicked ? "2" : clicked;
+  interestInput.value = next;
+  renderInterestToggle(next);
 });
 
 btnSettings.addEventListener("click", () => {
