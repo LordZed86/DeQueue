@@ -6,7 +6,7 @@
  * @property {number} interest   - Weight for the user's interest rating (1–3)
  * @property {number} recency    - Weight for how recently the item was added
  * @property {number} staleness  - Weight for items that have been sitting a long time
- * @property {number} moodMatch  - Bonus when current mood matches the item's mood tag
+ * @property {number} moodMatch  - Weight for how well an item fits the current session mood
  */
 
 /**
@@ -33,6 +33,23 @@ const MS_PER_DAY = 1000 * 60 * 60 * 24;
 const STALENESS_CEILING_DAYS = 30;
 
 /**
+ * Mood presets bias the session by re-ranking items using signals every item
+ * already has (timeEstimate, interest) rather than a per-item mood tag set at
+ * save time. Asking the user to predict their future mood when saving an item
+ * — days or weeks before a session — was a speculative, easy-to-get-wrong
+ * decision that worked against the app's whole anti-paralysis premise. Moods
+ * only apply as a session-time filter/bias now; items no longer carry a mood.
+ */
+const MOOD_BIAS = {
+  "low-energy": "short",
+  fun: "short",
+  focus: "interest",
+  curious: "interest",
+};
+
+const MAX_BUDGET_MINUTES = 60;
+
+/**
  * Computes a normalized priority score in the range [0, 100] for a single item.
  *
  * Each factor is normalized to [0, 1] before weighting so that changing one
@@ -43,15 +60,15 @@ const STALENESS_CEILING_DAYS = 30;
  *  - interest:   user's 1–3 rating (defaults to 2/neutral if unset), normalized to [0, 1]
  *  - recency:    items added today score 1.0, decaying linearly to 0 at STALENESS_CEILING_DAYS
  *  - staleness:  inverse of recency — items sitting the longest get the boost
- *  - moodMatch:  1.0 if currentMood matches item.mood, 0 otherwise
+ *  - moodMatch:  session-mood bias — "short" moods favor low timeEstimate, "interest"
+ *                moods favor high interest; no mood selected is neutral (0.5) for all items
  *
  * @param {import('../core/knapsack.js').KnapsackItem & {
  *   interest: number,
  *   addedAt:  number,
- *   mood?:    string,
  * }} item
  * @param {Object}  [opts]
- * @param {string}  [opts.currentMood]  - User's current mood tag (e.g. "focus", "low-energy")
+ * @param {string}  [opts.currentMood]  - User's current session mood (e.g. "focus", "low-energy")
  * @param {number}  [opts.now]          - Current timestamp in ms; defaults to Date.now()
  * @param {ScoringWeights} [opts.weights]
  * @returns {number} Integer score in [0, 100]
@@ -73,8 +90,14 @@ export function computeScore(item, opts = {}) {
   // Staleness: inverse — items sitting longest get the boost, capped at 1
   const stalenessScore = ageFraction;
 
-  // Mood: binary bonus
-  const moodScore = currentMood && item.mood && currentMood === item.mood ? 1 : 0;
+  // Mood: no mood selected → neutral, doesn't favor or penalize any item.
+  const moodBias = MOOD_BIAS[currentMood] ?? null;
+  let moodScore = 0.5;
+  if (moodBias === "short") {
+    moodScore = 1 - Math.min(item.timeEstimate / MAX_BUDGET_MINUTES, 1);
+  } else if (moodBias === "interest") {
+    moodScore = interestScore;
+  }
 
   const raw =
     weights.interest * interestScore +

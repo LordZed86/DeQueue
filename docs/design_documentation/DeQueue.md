@@ -100,7 +100,6 @@ Each saved item is an object with the following shape:
  * @property {number}   timeEstimate    - Estimated time to complete, in whole minutes
  * @property {string}   [topic]         - User-assigned topic tag (e.g. "research", "fun") — single tag, not an array (Resolved, see §10)
  * @property {number}   interest        - Interest rating 1–3 (1 = low, 2 = neutral/default, 3 = high). Optional at save time — defaults to 2 if the user doesn't touch it (Resolved, see §10)
- * @property {string}   [mood]          - Mood/energy tag from a fixed preset list (e.g. "focus", "low-energy") — not free text (Resolved, see §10)
  * @property {string}   contentType     - "article" | "video" | "other"
  * @property {number}   addedAt         - Unix timestamp of when the item was saved
  * @property {number}   [completedAt]   - Unix timestamp of completion, null if pending
@@ -125,6 +124,10 @@ User preferences stored in localStorage under `dequeue_settings`:
 ### Resolved: `weight` / `timeEstimate` duplication
 
 Previously every saved item stored both `weight` (used by the knapsack) and `timeEstimate` (used by the UI) with the same value. `weight` has been removed from the stored item shape — `scoreItems()` now derives `weight: item.timeEstimate` at scoring time, so there's a single source of truth on disk.
+
+### Resolved: `mood` removed from item shape
+
+Items no longer carry a `mood` field at all. See §5 ("Mood: per-item tag removed, session-time bias only") for the full rationale — in short, asking the user to predict their future mood when saving an item created a two-moments problem where the guess almost never paid off, which worked against the app's anti-paralysis premise. Mood is now a session-time-only input (`Settings.defaultMood` above and the `currentMood` scoring option), never something stored per item.
 
 ### Open Questions
 
@@ -236,7 +239,7 @@ Each item's priority score is computed by `utils/scoring.js` and attached as `.v
 | `interest` | User-assigned (1–3, optional, defaults to 2) | Normalized to [0, 1] as `(clamp(rating, 1, 3) - 1) / 2`; unset treated as 2 |
 | `recency` | Derived from `addedAt` | 1.0 today → 0.0 at 30 days (linear decay) |
 | `staleness` | Derived from `addedAt` | Inverse of recency — items sitting longest get the boost; ceiling 30 days (fixed, see §10) |
-| `mood` match | User's current mood vs item's mood tag | Binary: 1.0 if match, 0 otherwise |
+| `mood` bias | User's current session mood (no per-item mood tag — see below) | "low-energy"/"fun" favor lower `timeEstimate`; "focus"/"curious" favor higher `interest`; no mood selected is neutral (0.5) for every item |
 
 Each factor is normalized to [0, 1] before weighting so no factor can dominate by scale. Final score: `round(weighted_sum × 100)` → integer in [0, 100].
 
@@ -259,10 +262,19 @@ Recency and staleness are opposing forces (new-first vs. old-first). Under **equ
 
 The original 1–5 star picker required a deliberate calibration decision on every save and was a required field. That's exactly the kind of task-initiation friction the app is designed to remove, and `interest` carries the heaviest default weight (0.5) — an avoided or arbitrary rating there undermined the whole score. Replaced with an optional 3-point scale (Low / Neutral / High) shown as two toggle buttons that nudge away from a neutral default (2); pressing the active button again returns to neutral. Not interacting with it at all is a fully valid, zero-friction choice — the item is saved with `interest: 2` and scores as neutral on that axis.
 
+### Mood: per-item tag removed, session-time bias only
+
+Mood was previously captured at two moments with no reason to agree: once at save time (`item.mood` — a guess at what mood the item would suit, made days or weeks before it would ever be opened) and once at session-generation time (`currentMood` — the user's actual mood right now). Scoring rewarded only an exact match between the two (`moodMatch: 0.1`, binary). Predicting your own future mood correctly across 4 presets is close to a coin flip, so tagging an item's mood at save-time was more likely to hurt its ranking than help it — precisely the kind of speculative micro-decision the app exists to remove, and it directly echoed the interest-rating problem above.
+
+`item.mood` and the add-item mood field are gone entirely, along with the queue-view mood filter (which depended on `item.mood` and would otherwise have gone permanently dead). The session-time mood selector survives — `mood-select` on the queue view, plus `Settings.defaultMood` — and now biases scoring using signals every item already has instead of a per-item tag:
+
+- **"low-energy" / "fun"** → favor lower `timeEstimate` (`1 - min(timeEstimate / MAX_BUDGET_MINUTES, 1)`)
+- **"focus" / "curious"** → favor higher `interest` (reuses the normalized interest score)
+- **No mood selected** → neutral 0.5 for every item, same non-penalizing default pattern used for interest
+
 ### Other resolved Tier 1 questions
 
 - **Staleness ceiling**: kept fixed at 30 days. The four scoring weights are already user-adjustable via the options page sliders — that's the intended tuning knob; a second adjustable ceiling would add settings complexity for marginal benefit.
-- **Mood**: fixed presets (focus, low-energy, curious, fun), not free text — easier to match against for scoring, and the UI already used a fixed `<select>`.
 - **Topic**: single tag, not an array — matches the existing schema/UI; an array would need a migration and a tag-input UI rework.
 
 ### Open Questions
@@ -396,9 +408,9 @@ The popup is the primary surface — it opens when the user clicks the extension
 
 **Controls:**
 
-- Time budget input (in minutes) + "Generate Session" button
-- Filter by topic, mood, content type
-- Sort by recency, interest, staleness
+- Time budget input (in minutes) + session mood picker + "Generate Session" button
+- Filter by topic
+- Sort by priority, interest, recency, time
 - Done / Skip in session view
 - Points counter + 🔥 streak counter in header (both update on Done)
 - 🏅 achievements button opens achievements panel
@@ -439,17 +451,17 @@ Remaining / future:
 
 ## 9. Testing Plan
 
-### Current test suite (159 tests, all passing)
+### Current test suite (163 tests, all passing)
 
 <!--prettier-ignore-->
 | File | Tests | What it covers |
 | --- | --- | --- |
 | `core/knapsack.test.js` | 17 | DP vs. brute-force agreement, edge cases, known optimal solutions |
-| `utils/scoring.test.js` | 19 | Each factor in isolation (including interest clamping/neutral-default), output range, weight system, `scoreItems` immutability |
+| `utils/scoring.test.js` | 22 | Each factor in isolation (interest clamping/neutral-default, mood bias per preset), output range, weight system, `scoreItems` immutability |
 | `utils/storage.test.js` | 35 | All CRUD operations, settings merge, corrupt-data resilience, `clearAll` scoping, streak logic |
 | `core/queue.test.js` | 23 | `peek`/`dequeue`/`skip`/`toArray`, skip cycling, `buildSessionQueue` sort order |
 | `content/content.test.js` | 42 | Metadata extraction (title, description, type, duration, topic), duration parsers, `cleanDocumentTitle` |
-| `core/pipeline.test.js` | 13 | Full pipeline integration (scoreItems → knapsack → queue), stress tests 50–100 items |
+| `core/pipeline.test.js` | 14 | Full pipeline integration (scoreItems → knapsack → queue), stress tests 50–100 items |
 | `utils/achievements.test.js` | 10 | Each achievement condition, duplicate-unlock prevention, empty-stats base case |
 
 ### Not unit tested (and why)
@@ -490,9 +502,10 @@ Remaining / future:
 | 13 | Skip behavior — discard or cycle to back? | **Decided: cycle to back** — item stays available this session, never forces the user into a dead end |
 | 14 | Session state storage — localStorage vs. chrome.storage.session | **Decided: chrome.storage.session** — survives popup close/tab switch, auto-clears on browser restart; localStorage would persist stale sessions |
 | 15 | Long-form items (>60 min) — force into algorithm or separate space? | **Decided: separate long-form library (P2)** — items outside the knapsack presented when the user has open-ended time; removes decision anxiety without breaking the budget model |
-| 16 | Mood — fixed presets vs. free-text tag? | **Decided: fixed presets** (focus, low-energy, curious, fun) — easier to match against for scoring than free text |
+| 16 | Mood — fixed presets vs. free-text tag? | **Decided: fixed presets** (focus, low-energy, curious, fun) — superseded by #19, presets remain but only as a session-time input |
 | 17 | Staleness ceiling — fixed 30 days vs. user-adjustable? | **Decided: fixed at 30 days** — the scoring weights are already the user-adjustable tuning knob |
 | 18 | Interest rating — 5-point stars vs. lighter-weight signal? | **Decided: optional 3-point toggle** (Low/Neutral/High), defaults to neutral, no longer required to save — reduces save-time decision friction; see §5 |
+| 19 | Mood — per-item tag at save time, or session-time input only? | **Decided: session-time only** — a per-item mood tag asked the user to predict their future mood days/weeks ahead of opening the item, an easy-to-get-wrong speculative decision; `item.mood` and the mood filter are removed, the session mood picker now biases scoring via `timeEstimate`/`interest` instead of exact-matching a tag; see §5 |
 
 ---
 

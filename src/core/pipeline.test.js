@@ -10,9 +10,9 @@ import { scoreItems, DEFAULT_WEIGHTS } from "../utils/scoring.js";
  * weight/timeEstimate are kept in sync — scoring uses timeEstimate,
  * knapsack uses weight.
  */
-function makeItem(id, { interest = 3, ageDays = 0, timeEstimate = 5, mood = null } = {}) {
+function makeItem(id, { interest = 3, ageDays = 0, timeEstimate = 5 } = {}) {
   const addedAt = Date.now() - ageDays * 24 * 60 * 60 * 1000;
-  return { id, interest, addedAt, timeEstimate, weight: timeEstimate, mood };
+  return { id, interest, addedAt, timeEstimate, weight: timeEstimate };
 }
 
 /** Generates n items with randomized but valid properties. */
@@ -82,18 +82,30 @@ describe("full pipeline: scoreItems → knapsack → buildSessionQueue", () => {
     expect(ids).not.toContain("done-completed");
   });
 
-  it("mood match elevates the matching item to the front of the queue", () => {
-    const now = Date.now();
+  it("'focus' mood elevates the higher-interest item to the front of the queue", () => {
     const raw = [
-      { ...makeItem("focus-item", { interest: 3, ageDays: 5, timeEstimate: 5 }), mood: "focus" },
-      makeItem("no-mood", { interest: 3, ageDays: 5, timeEstimate: 5 }),
+      makeItem("high-interest", { interest: 3, ageDays: 5, timeEstimate: 5 }),
+      makeItem("low-interest", { interest: 1, ageDays: 5, timeEstimate: 5 }),
     ];
 
     const scored = scoreItems(raw, { currentMood: "focus" });
     const result = knapsack(20, scored);
     const queue = buildSessionQueue(result.selected);
 
-    expect(queue.peek().id).toBe("focus-item");
+    expect(queue.peek().id).toBe("high-interest");
+  });
+
+  it("'low-energy' mood elevates the shorter item to the front of the queue", () => {
+    const raw = [
+      makeItem("short-item", { interest: 3, ageDays: 5, timeEstimate: 5 }),
+      makeItem("long-item", { interest: 3, ageDays: 5, timeEstimate: 55 }),
+    ];
+
+    const scored = scoreItems(raw, { currentMood: "low-energy" });
+    const result = knapsack(60, scored);
+    const queue = buildSessionQueue(result.selected);
+
+    expect(queue.peek().id).toBe("short-item");
   });
 
   it("session queue reflects done/skip state correctly mid-session", () => {
