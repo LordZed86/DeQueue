@@ -376,6 +376,12 @@ select:focus {
   margin-top: 4px;
 }
 
+.hint {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
 /* ── Session view ─────────────────────────────────────────── */
 .progress-label {
   font-size: 12px;
