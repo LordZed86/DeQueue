@@ -14,12 +14,14 @@ These are known issues from hallway testing and code audit. They affect real
 usage today and should be fixed before P2/P3 feature work or platform porting
 begins.
 
-- ⏳ **Autofill title hit-or-miss on some sites** — extraction waterfall
-  (`og:title` → `twitter:title` → cleaned `document.title`) looks correct in
-  the code, but the most likely failure point is that the content script isn't
-  injected on some pages (restricted URLs, pages loaded before the extension),
-  causing `background.js` to hit its `lastError` branch and silently return
-  null. Needs real failure cases logged to confirm.
+- ✅ **Autofill title hit-or-miss on some sites** — root cause confirmed:
+  content scripts can't inject into restricted pages (`chrome://`, `about:`,
+  extension/store pages) or into tabs opened before the extension was
+  installed/reloaded — a browser-level restriction, not fixable from the
+  manifest. `background.js` already degraded correctly (`null` via
+  `chrome.runtime.lastError`); the add-item view now shows a neutral inline
+  hint ("Couldn't read this page — enter details manually") in that case, so
+  it no longer reads as a silent, unexplained failure.
 
 ---
 
@@ -96,6 +98,28 @@ decided before porting starts, not independently per platform.
   "fun" favor lower `timeEstimate`, "focus" and "curious" favor higher
   `interest`. No mood selected stays neutral (0.5) for every item, same
   non-penalizing default pattern as the interest/recency fixes above.
+
+---
+
+## Pre-publish hallway testing — checklist
+
+The P1 and Tier 1 lists above are both fully resolved; this is the next step
+before Chrome Web Store / Firefox Add-ons submission. Seed list of things to
+verify with real usage, not just unit tests:
+
+- ⏳ **Topic scraping accuracy** — `extractTopic()` in `content/content.js`
+  (`og:section` → `article:tag` → first `keywords` value) already ships, but
+  hasn't been checked against a real spread of sites. `og:section`/
+  `article:tag` coverage is inconsistent across publishers; worth logging how
+  often each tier actually fires vs. falling through to null.
+- ⏳ **Interest toggle UX** — the 1–5 star picker was replaced with an
+  optional 3-point Low/Neutral/High toggle this session. Needs real usage to
+  confirm the neutral-default-if-skipped behavior reads as intended rather
+  than confusing (e.g. does it look like it's just not working?).
+- ⏳ **Mood bias UX** — the per-item mood tag was removed and the session
+  mood picker now biases scoring via `timeEstimate`/`interest` instead of
+  exact tag matching. Needs a real session generated under each mood preset
+  to confirm the reordering actually feels intentional rather than random.
 
 ---
 
