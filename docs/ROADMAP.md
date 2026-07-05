@@ -123,6 +123,36 @@ verify with real usage, not just unit tests:
 
 ---
 
+## Storefront submission requirements
+
+Full checklists with sources: `docs/publishing/chrome_web_store.md` and
+`docs/publishing/firefox_addons.md`. Summary of real blockers found there,
+shared across both stores unless noted:
+
+- ⏳ **Privacy policy.** Neither store has one linked yet; Chrome requires it
+  hosted and linked from the dashboard, Firefox (as of the 2025-06 policy
+  simplification) just wants a link to a self-hosted one — same document
+  covers both.
+- ⏳ **Narrow the `<all_urls>` content script.** Currently injects
+  `content/content.js` persistently on every page. Both stores scrutinize
+  broad host permissions; target fix is on-demand injection via
+  `chrome.scripting.executeScript` from the popup on the active tab only,
+  dropping the `content_scripts` manifest entry and relying on `activeTab`.
+  This is the same code change referenced in the "bigger picture" note in
+  dev notes — do it once, satisfies both stores.
+- ⏳ **Firefox-specific manifest additions** — `browser_specific_settings`
+  block needed with `gecko.id` (required for MV3 submissions, currently
+  missing) and `gecko.data_collection_permissions` (new Mozilla disclosure
+  requirement, effective for new submissions since 2025-11-03). Chrome does
+  not need or use this key.
+- ⏳ **Developer accounts** — neither registered yet (Chrome: one-time $5
+  fee; Firefox: free).
+- ⏳ **Listing assets** — descriptions, screenshots (none captured yet),
+  single-purpose statement and permission justifications (Chrome-specific
+  dashboard fields) all still to do.
+
+---
+
 ## P2 — Near-term features
 
 Candidates for the next real release cycle, post-bug-fixes. Not yet
