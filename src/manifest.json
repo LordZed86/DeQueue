@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "DeQueue",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Knapsack-powered reading queue for ADHD brains. Set a time budget, get your best items.",
 
   "options_page": "src/options/options.html",
