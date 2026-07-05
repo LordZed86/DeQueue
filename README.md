@@ -2,10 +2,10 @@
 
 ![Tests](https://github.com/LordZed86/DeQueue/actions/workflows/test.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-GPL--3.0-blue)
-![Version](https://img.shields.io/badge/version-1.0.0-informational)
+![Version](https://img.shields.io/badge/version-1.1.0-informational)
 ![JavaScript](https://img.shields.io/badge/JavaScript-ES2022-yellow?logo=javascript)
 ![Manifest V3](https://img.shields.io/badge/WebExtensions-MV3-brightgreen?logo=googlechrome)
-![Tests](https://img.shields.io/badge/tests-157%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-163%20passing-brightgreen)
 
 A browser extension that helps people with ADHD manage content backlogs. You set a time budget, DeQueue uses a 0/1 knapsack algorithm to pick the highest-priority items that fit, and presents them one at a time so there's no choice paralysis.
 
@@ -43,10 +43,10 @@ DeQueue's session generator is a **0/1 knapsack** solved with bottom-up dynamic 
 
 Before the knapsack runs, every item gets a priority score (0–100) computed from four factors, each normalized to `[0, 1]` so no single factor dominates by scale:
 
-- **Interest** — your 1–5 rating → `(rating - 1) / 4`
+- **Interest** — optional Low/Neutral/High toggle (defaults to neutral if skipped) → `(rating - 1) / 2`
 - **Recency** — items added today score 1.0, decaying linearly to 0 at 30 days
 - **Staleness** — inverse of recency; oldest items get a boost so nothing sits forever
-- **Mood match** — binary 1.0 bonus if your current mood matches the item's tag
+- **Mood bias** — session-time-only mood picker (no per-item mood tag); "low-energy"/"fun" favor shorter items, "focus"/"curious" favor higher-interest items, no mood selected stays neutral
 
 Weights are user-configurable via the options page. The default weights are intentionally asymmetric between recency and staleness — equal weights cancel each other out and produce no age-based differentiation.
 
@@ -82,7 +82,6 @@ The table is 2D (`dp[i][w]`) rather than the space-optimized 1D rolling array �
 
 - **JSON export / import** — back up your queue to a file and restore it on a new browser or after a reset
 - **Topic clustering** — auto-group items by topic using a graph/similarity approach; this is where graph theory from the original design comes back in
-- **Mood preset rework** — replace the free-text mood tag with a fixed set (e.g. "focus", "low-energy", "curious", "quick") for easier matching and better scoring
 - **Scoring weight tuning** — expose the recency vs. staleness tradeoff as a user-facing bias slider so users can tune "prefer new saves ↔ clear old backlog"
 - **Safari support** — WebExtensions API is largely compatible; needs testing and a possible manifest tweak
 - **Article / video only mode** — filter sessions to one content type (e.g. no audio at work)
