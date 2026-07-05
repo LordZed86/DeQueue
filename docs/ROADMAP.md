@@ -213,3 +213,11 @@ Claude Code) doesn't have to re-derive _why_.
   describe.
 - ✅ **Build order:** iOS before Android, both before desktop's capture
   strategy is finalized.
+- ✅ **v1.1.0 tagged on `main`:** all P1 bugs, pre-release cleanup, and Tier 1
+  engine decisions above resolved and merged; interest rating and mood both
+  redesigned. Versioning convention going forward: v1.x.x = major/breaking,
+  vx.1.x = feature/behavior additions to existing functionality, vx.x.1 =
+  patches/hotfixes. This release is stable and tested but not yet submitted to
+  Chrome Web Store / Firefox Add-ons — store submission is a separate
+  milestone (see "Pre-publish hallway testing" and storefront requirement
+  checklists), not a gate on tagging stable work to `main`.
