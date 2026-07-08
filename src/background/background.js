@@ -2,8 +2,9 @@
  * Background service worker.
  *
  * Responsibilities:
- *  - Relay GET_PAGE_META requests from the popup to the content script on the
- *    active tab (popup can't message content scripts directly in MV3).
+ *  - Handle GET_PAGE_META requests from the popup by injecting the content
+ *    script into the active tab on demand (no persistent content_scripts
+ *    entry — keeps the extension's host permissions to activeTab only).
  *  - Install-time setup (e.g. default settings) on first install.
  *
  * All storage reads/writes still go through utils/storage.js in the popup.
@@ -18,10 +19,15 @@ chrome.runtime.onInstalled.addListener(({ reason }) => {
 });
 
 /**
- * Relay messages from the popup to the content script on the active tab.
+ * On GET_PAGE_META, inject content.js into the active tab on demand, then
+ * read its result back with a second, tiny inline script — no standing
+ * content script, no message round-trip through a listener that may not
+ * exist yet.
  *
- * The popup sends:  { type: "GET_PAGE_META" }
- * We forward it to the content script and pass the response back.
+ * Two steps because the build wraps content.js as a module IIFE, so its own
+ * completion value isn't reliably the extraction result; content.js instead
+ * stashes it on `window.__dequeuePageMeta` (see content.js) for this second
+ * call to retrieve and clean up.
  */
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type !== "GET_PAGE_META") return false;
@@ -33,14 +39,38 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       return;
     }
 
-    chrome.tabs.sendMessage(tabId, { type: "GET_PAGE_META" }, (meta) => {
-      if (chrome.runtime.lastError) {
-        // Content script not injected on this page (e.g. chrome:// URLs) — that's fine.
-        sendResponse(null);
-        return;
-      }
-      sendResponse(meta);
-    });
+    chrome.scripting.executeScript(
+      {
+        target: { tabId },
+        files: ["src/content/content.js"],
+      },
+      () => {
+        if (chrome.runtime.lastError) {
+          // Restricted page (chrome://, store pages) or a tab the extension
+          // has no access to — that's fine, popup falls back to manual entry.
+          sendResponse(null);
+          return;
+        }
+
+        chrome.scripting.executeScript(
+          {
+            target: { tabId },
+            func: () => {
+              const meta = window.__dequeuePageMeta ?? null;
+              delete window.__dequeuePageMeta;
+              return meta;
+            },
+          },
+          (results) => {
+            if (chrome.runtime.lastError) {
+              sendResponse(null);
+              return;
+            }
+            sendResponse(results?.[0]?.result ?? null);
+          },
+        );
+      },
+    );
   });
 
   return true; // Keep the message channel open for the async sendResponse.

@@ -46,13 +46,11 @@ the live docs before actually submitting.
   step.
 - ✅ **File size.** 200 MB max for validation to pass — nowhere close, not a
   concern for this project.
-- 🔄 **Permissions.** Same underlying concern as the Chrome checklist: the
-  persistent `<all_urls>` content script is broader than the on-demand
-  metadata-read use case needs. AMO reviewers scrutinize broad host
-  permissions similarly to Chrome, though Firefox's manual-review bar has
-  historically been a bit more lenient than Chrome's automated rejection
-  flow. Fixing this once (on-demand `scripting` injection via `activeTab`)
-  covers both stores — no need to solve it twice.
+- ✅ **Permissions.** Same underlying concern as the Chrome checklist, fixed
+  once for both: the persistent `<all_urls>` content script is gone,
+  replaced with on-demand `chrome.scripting.executeScript` injection into
+  the active tab via `activeTab` + `scripting`. No host permissions
+  requested.
 
 ---
 
@@ -97,10 +95,8 @@ the live docs before actually submitting.
 1. Missing `browser_specific_settings.gecko.id` in `manifest.json` — MV3
    submissions are rejected by automated validation without it.
 2. Missing `gecko.data_collection_permissions` declaration.
-3. `<all_urls>` content script — same fix as the Chrome checklist, shared
-   across both stores.
-4. No developer account registered yet.
-5. No listing assets yet.
+3. No developer account registered yet.
+4. No listing assets yet.
 
 **Not required (already resolved by policy, no action needed):**
 

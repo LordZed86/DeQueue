@@ -34,14 +34,12 @@ the live docs before actually submitting.
   fetches of executable code — this should already pass, but worth a final
   read-through of `background.js` and `content.js` immediately before
   submission to confirm nothing was added that violates it.
-- 🔄 **Narrowest permissions necessary.** Currently requests `storage`,
-  `activeTab`, `scripting`, plus a `content_scripts` block matching
-  `<all_urls>` (persistent injection on every page load). `<all_urls>` is
-  broader than the use case needs — see the on-demand-injection rework
-  tracked in ROADMAP.md pre-publish checklist. Target: drop the persistent
-  `content_scripts` entry, inject via `chrome.scripting.executeScript` from
-  the popup on the active tab only, rely on `activeTab` instead of a host
-  permission.
+- ✅ **Narrowest permissions necessary.** Requests only `storage`,
+  `activeTab`, `scripting` — no host permissions. The persistent
+  `content_scripts` (`<all_urls>`) block is gone; `background.js` injects
+  `content/content.js` on demand via `chrome.scripting.executeScript` into
+  the active tab only, triggered when the popup opens. See ROADMAP.md for
+  implementation notes.
 - ⏳ **Single purpose.** Extension must have one narrow, easy-to-understand
   purpose, stated clearly in the dashboard's single-purpose field. Ours:
   "save articles/videos and build a time-boxed session from them via
@@ -109,11 +107,8 @@ the live docs before actually submitting.
 **Real blockers to submission:**
 
 1. No privacy policy (required given current data handling + permissions).
-2. `<all_urls>` content script is broader than necessary and likely to draw
-   manual-review scrutiny or rejection — narrowing to on-demand
-   `activeTab` + `scripting` injection avoids this.
-3. No developer account registered yet.
-4. No listing assets (screenshots, descriptions) yet.
+2. No developer account registered yet.
+3. No listing assets (screenshots, descriptions) yet.
 
 **Everything else above is doable in parallel** and isn't blocking, but
 should be done before clicking submit rather than after.

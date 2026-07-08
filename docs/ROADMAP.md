@@ -133,13 +133,20 @@ shared across both stores unless noted:
   hosted and linked from the dashboard, Firefox (as of the 2025-06 policy
   simplification) just wants a link to a self-hosted one — same document
   covers both.
-- ⏳ **Narrow the `<all_urls>` content script.** Currently injects
-  `content/content.js` persistently on every page. Both stores scrutinize
-  broad host permissions; target fix is on-demand injection via
-  `chrome.scripting.executeScript` from the popup on the active tab only,
-  dropping the `content_scripts` manifest entry and relying on `activeTab`.
-  This is the same code change referenced in the "bigger picture" note in
-  dev notes — do it once, satisfies both stores.
+- ✅ **Narrow the `<all_urls>` content script.** `content_scripts` dropped
+  from `manifest.json` entirely; `background.js` now injects
+  `content/content.js` on demand via `chrome.scripting.executeScript` into
+  only the active tab, on click, instead of persistently on every page load.
+  Permissions are now just `storage`, `activeTab`, `scripting` — no
+  `<all_urls>` host permission. `content.js` is still bundled to `dist/` via
+  `additionalInputs` in `vite.config.js` since it's no longer referenced by
+  the manifest. Because the build wraps content scripts as a module IIFE,
+  `executeScript`'s own completion value isn't a reliable way to get the
+  result back — `content.js` stashes its result on
+  `window.__dequeuePageMeta`, and `background.js` retrieves it with a second,
+  tiny inline `executeScript` call that also deletes the global. Verified
+  manually against a real page (autofill still populates title/URL/time/
+  content-type on first click, no reload needed).
 - ⏳ **Firefox-specific manifest additions** — `browser_specific_settings`
   block needed with `gecko.id` (required for MV3 submissions, currently
   missing) and `gecko.data_collection_permissions` (new Mozilla disclosure
