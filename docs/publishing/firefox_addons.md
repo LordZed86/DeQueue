@@ -54,13 +54,12 @@ the live docs before actually submitting.
 
 ## Privacy policy
 
-- ⏳ **No longer required to be hosted on AMO itself** (policy simplified
+- 🔄 **No longer required to be hosted on AMO itself** (policy simplified
   2025-06). Developers are now encouraged to link to a self-hosted privacy
-  policy instead of pasting one into an AMO-hosted field. Since we're
-  already writing one for the Chrome Web Store listing (see
-  `chrome_web_store.md`), the same document/URL can be linked here — no
-  separate policy needed, just make sure the link is added to the AMO
-  listing once the policy exists.
+  policy instead of pasting one into an AMO-hosted field. `PRIVACY.md` is
+  written and shared with the Chrome Web Store listing (see
+  `chrome_web_store.md`) — no separate policy needed, just needs a public
+  URL once hosting is set up, then link it in both listings.
 
 ---
 

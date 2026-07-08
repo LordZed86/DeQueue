@@ -129,10 +129,15 @@ Full checklists with sources: `docs/publishing/chrome_web_store.md` and
 `docs/publishing/firefox_addons.md`. Summary of real blockers found there,
 shared across both stores unless noted:
 
-- ⏳ **Privacy policy.** Neither store has one linked yet; Chrome requires it
-  hosted and linked from the dashboard, Firefox (as of the 2025-06 policy
-  simplification) just wants a link to a self-hosted one — same document
-  covers both.
+- 🔄 **Privacy policy.** Content written (`PRIVACY.md` in repo root) — covers
+  what's read (on-demand active-tab metadata), what's stored (items,
+  settings, achievements/streaks/points, all local via `storage`/
+  `chrome.storage.session`), and confirms nothing is transmitted off-device.
+  Still needs a reachable URL: Chrome requires it hosted and linked from the
+  dashboard, Firefox (as of the 2025-06 policy simplification) just wants a
+  link to a self-hosted one — same document covers both, once hosted (e.g.
+  GitHub Pages against `PRIVACY.md`, once a project domain — `kjones.dev` or
+  `debuggingmydegree.com`, both currently unhosted — is set up).
 - ✅ **Narrow the `<all_urls>` content script.** `content_scripts` dropped
   from `manifest.json` entirely; `background.js` now injects
   `content/content.js` on demand via `chrome.scripting.executeScript` into

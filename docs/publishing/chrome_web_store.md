@@ -58,16 +58,15 @@ the live docs before actually submitting.
 
 ## Privacy policy
 
-- ⏳ **Privacy policy required.** Any product handling user data needs an
-  accurate, up-to-date privacy policy linked from the dashboard's privacy
-  field. DeQueue reads page metadata (title, description, type, duration,
-  topic) from the active tab and stores saved items/settings in
-  `localStorage` / `chrome.storage.session` — no server, no accounts, no
-  data leaves the device. That's a straightforward policy to write (data
-  collected, why, "never transmitted, stored locally only"), but it doesn't
-  exist yet. Needs to be hosted somewhere reachable by URL — a repo-hosted
-  `PRIVACY.md` rendered via GitHub Pages, or similar, would satisfy this
-  without needing a separate site.
+- 🔄 **Privacy policy required.** Written — `PRIVACY.md` in the repo root
+  covers what's read (on-demand active-tab metadata: title, description,
+  type, duration, topic), what's stored (items/settings/achievements/
+  streaks/points, all local via `localStorage` / `chrome.storage.session`),
+  and confirms no server, no accounts, nothing transmitted off-device. Still
+  needs to be hosted somewhere reachable by URL for the dashboard's privacy
+  field — GitHub Pages rendering `PRIVACY.md` is the leading option, pending
+  a project domain (`kjones.dev` or `debuggingmydegree.com`, both currently
+  unhosted).
 - ⏳ **Data-usage disclosure fields** in the dashboard (what's collected, how
   it's used, whether sold/shared with third parties — all "no" for us)
   must match the privacy policy and the code's actual behavior.
@@ -106,7 +105,8 @@ the live docs before actually submitting.
 
 **Real blockers to submission:**
 
-1. No privacy policy (required given current data handling + permissions).
+1. Privacy policy written (`PRIVACY.md`) but not yet hosted at a public URL
+   — needed for the dashboard's privacy field.
 2. No developer account registered yet.
 3. No listing assets (screenshots, descriptions) yet.
 
