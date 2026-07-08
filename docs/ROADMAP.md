@@ -163,11 +163,13 @@ shared across both stores unless noted:
   required: ["none"] }` since DeQueue is fully local and transmits nothing
   off-device. Chrome ignores this key entirely, so it's additive with no
   cross-store impact.
-- ⏳ **Developer accounts** — neither registered yet (Chrome: one-time $5
-  fee; Firefox: free).
-- ⏳ **Listing assets** — descriptions, screenshots (none captured yet),
-  single-purpose statement and permission justifications (Chrome-specific
-  dashboard fields) all still to do.
+- ✅ **Developer accounts** — both registered (Chrome: individual/non-trader
+  account, one-time $5 fee paid; Firefox: free).
+- 🔄 **Listing assets** — description, single-purpose statement, permission
+  justifications, and suggested category all drafted in
+  `docs/publishing/store_listing.md`, shared across both stores; still need
+  to be pasted into each dashboard. Screenshots not captured yet (need a
+  live browser session to grab the popup in its main states).
 
 ---
 
