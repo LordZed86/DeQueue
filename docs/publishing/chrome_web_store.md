@@ -17,8 +17,9 @@ the live docs before actually submitting.
 
 ## Account setup
 
-- ⏳ Register a Chrome Web Store developer account (one-time $5 fee), verify
-  developer email.
+- ✅ Chrome Web Store developer account registered (individual/non-trader —
+  no business entity, no monetization currently; revisit classification if
+  that changes later).
 - ⏳ (Optional) Verified publisher badge — requires domain verification
   (~$10–15/yr). Not required to publish; skip unless we want the badge.
 
@@ -40,19 +41,13 @@ the live docs before actually submitting.
   `content/content.js` on demand via `chrome.scripting.executeScript` into
   the active tab only, triggered when the popup opens. See ROADMAP.md for
   implementation notes.
-- ⏳ **Single purpose.** Extension must have one narrow, easy-to-understand
-  purpose, stated clearly in the dashboard's single-purpose field. Ours:
-  "save articles/videos and build a time-boxed session from them via
-  knapsack prioritization." Draft this field's exact wording during listing
-  setup.
-- ⏳ **Permission justifications.** Each requested permission needs a
-  dashboard field explaining why it's needed. Draft ahead of time:
-  - `storage` — persist saved items, settings, and points locally.
-  - `activeTab` — read metadata (title/description/type/duration/topic)
-    from the tab the user is actively adding, only when they invoke the
-    extension.
-  - `scripting` — inject the metadata-extraction function into the active
-    tab on demand (replaces persistent `content_scripts` once reworked).
+- 🔄 **Single purpose.** Extension must have one narrow, easy-to-understand
+  purpose, stated clearly in the dashboard's single-purpose field. Drafted
+  in `store_listing.md` — still needs to be pasted into the dashboard during
+  listing setup.
+- 🔄 **Permission justifications.** Each requested permission needs a
+  dashboard field explaining why it's needed. Drafted in `store_listing.md`
+  — still needs to be pasted into the dashboard.
 
 ---
 
@@ -75,8 +70,9 @@ the live docs before actually submitting.
 
 ## Store listing assets
 
-- ⏳ **Description.** Short + detailed descriptions for the listing (distinct
-  from `manifest.json`'s description field).
+- 🔄 **Description.** Short + detailed descriptions written in
+  `store_listing.md` (distinct from `manifest.json`'s description field) —
+  still needs to be pasted into the dashboard.
 - ⏳ **Screenshots.** 1–5 required, actual extension UI (not marketing
   graphics), 1280×800 or 640×400. None exist yet — need to capture the
   popup in its main states (empty queue, add-item, active session, done).
@@ -85,7 +81,9 @@ the live docs before actually submitting.
   as a blank background square, missing the "DQ" wordmark and underline
   accent from the source SVG). Icons at all three sizes (16/48/128) now
   match the source design.
-- ⏳ **Category and language** selection in the dashboard.
+- 🔄 **Category and language** selection in the dashboard. Suggested
+  category (**Productivity**) drafted in `store_listing.md`; language is a
+  dashboard dropdown pick, no drafting needed.
 
 ---
 
@@ -107,8 +105,9 @@ the live docs before actually submitting.
 
 1. Privacy policy written (`PRIVACY.md`) but not yet hosted at a public URL
    — needed for the dashboard's privacy field.
-2. No developer account registered yet.
-3. No listing assets (screenshots, descriptions) yet.
+2. Screenshots not captured yet. Descriptions/single-purpose/permission
+   justifications/category are drafted in `store_listing.md` and just need
+   pasting into the dashboard.
 
 **Everything else above is doable in parallel** and isn't blocking, but
 should be done before clicking submit rather than after.

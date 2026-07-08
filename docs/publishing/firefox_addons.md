@@ -17,8 +17,7 @@ the live docs before actually submitting.
 
 ## Account setup
 
-- ⏳ Register a Firefox Add-on Developer account (free, no fee unlike
-  Chrome).
+- ✅ Firefox Add-on Developer account registered.
 
 ---
 
@@ -65,13 +64,15 @@ the live docs before actually submitting.
 
 ## Store listing assets
 
-- ⏳ **Description** for the AMO listing.
+- 🔄 **Description.** Same copy as the Chrome listing, drafted once in
+  `store_listing.md` — still needs to be pasted into the AMO dashboard.
 - ⏳ **Screenshots** — same captures used for the Chrome listing should be
   reusable here; confirm AMO's size/format constraints match before
   reusing verbatim.
 - ✅ **Icon.** Same `icon128.png` as the Chrome listing — regenerated from
   source SVG, no longer a blank placeholder (see `chrome_web_store.md`).
-- ⏳ **Category** selection during listing setup.
+- 🔄 **Category** selection during listing setup. Suggested category
+  (**Productivity**) drafted in `store_listing.md`.
 
 ---
 
@@ -89,8 +90,8 @@ the live docs before actually submitting.
 
 **Real blockers to submission:**
 
-1. No developer account registered yet.
-2. No listing assets yet.
+1. Screenshots not captured yet. Description/category are drafted in
+   `store_listing.md` and just need pasting into the AMO dashboard.
 
 **Not required (already resolved by policy, no action needed):**
 
