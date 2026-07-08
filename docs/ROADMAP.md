@@ -167,9 +167,11 @@ shared across both stores unless noted:
   account, one-time $5 fee paid; Firefox: free).
 - 🔄 **Listing assets** — description, single-purpose statement, permission
   justifications, and suggested category all drafted in
-  `docs/publishing/store_listing.md`, shared across both stores; still need
-  to be pasted into each dashboard. Screenshots not captured yet (need a
-  live browser session to grab the popup in its main states).
+  `docs/publishing/store_listing.md`, shared across both stores. 5
+  screenshots captured (queue, add-item, session, session complete,
+  options) in `docs/screenshots/` and embedded in the README. Everything
+  here just needs uploading/pasting into each dashboard during actual
+  submission.
 
 ---
 

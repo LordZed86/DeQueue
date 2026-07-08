@@ -73,9 +73,11 @@ the live docs before actually submitting.
 - 🔄 **Description.** Short + detailed descriptions written in
   `store_listing.md` (distinct from `manifest.json`'s description field) —
   still needs to be pasted into the dashboard.
-- ⏳ **Screenshots.** 1–5 required, actual extension UI (not marketing
-  graphics), 1280×800 or 640×400. None exist yet — need to capture the
-  popup in its main states (empty queue, add-item, active session, done).
+- 🔄 **Screenshots.** 1–5 required, actual extension UI (not marketing
+  graphics), 1280×800 or 640×400. 5 captured, covering queue view, add-item
+  (autofilled), active session, session complete, and options — see
+  `docs/screenshots/` (also embedded in the README). Still need to be
+  uploaded to the dashboard.
 - ✅ **Store icon, 128×128.** `icon128.png` in `src/assets/icons/` was
   regenerated from `icon.svg` (the PNGs had gone stale and were rendering
   as a blank background square, missing the "DQ" wordmark and underline
@@ -105,9 +107,10 @@ the live docs before actually submitting.
 
 1. Privacy policy written (`PRIVACY.md`) but not yet hosted at a public URL
    — needed for the dashboard's privacy field.
-2. Screenshots not captured yet. Descriptions/single-purpose/permission
-   justifications/category are drafted in `store_listing.md` and just need
-   pasting into the dashboard.
+2. Everything else (screenshots, descriptions, single-purpose/permission
+   justifications, category) is drafted/captured — see `store_listing.md`
+   and `docs/screenshots/` — and just needs uploading/pasting into the
+   dashboard during actual submission.
 
 **Everything else above is doable in parallel** and isn't blocking, but
 should be done before clicking submit rather than after.

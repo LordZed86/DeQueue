@@ -66,9 +66,9 @@ the live docs before actually submitting.
 
 - 🔄 **Description.** Same copy as the Chrome listing, drafted once in
   `store_listing.md` — still needs to be pasted into the AMO dashboard.
-- ⏳ **Screenshots** — same captures used for the Chrome listing should be
-  reusable here; confirm AMO's size/format constraints match before
-  reusing verbatim.
+- 🔄 **Screenshots** — same 5 captures used for the Chrome listing (see
+  `docs/screenshots/`) should be reusable here; confirm AMO's size/format
+  constraints match before reusing verbatim, then upload.
 - ✅ **Icon.** Same `icon128.png` as the Chrome listing — regenerated from
   source SVG, no longer a blank placeholder (see `chrome_web_store.md`).
 - 🔄 **Category** selection during listing setup. Suggested category
@@ -90,8 +90,11 @@ the live docs before actually submitting.
 
 **Real blockers to submission:**
 
-1. Screenshots not captured yet. Description/category are drafted in
-   `store_listing.md` and just need pasting into the AMO dashboard.
+1. Everything (screenshots, description, category) is captured/drafted —
+   see `store_listing.md` and `docs/screenshots/` — and just needs
+   uploading/pasting into the AMO dashboard during actual submission.
+   Privacy policy link still needs a hosted URL (see `chrome_web_store.md`)
+   before either listing can go live.
 
 **Not required (already resolved by policy, no action needed):**
 

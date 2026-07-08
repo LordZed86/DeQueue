@@ -26,6 +26,22 @@ Built for CS 398 — Algorithmic Problem Solving.
 
 ---
 
+## Screenshots
+
+| Queue | Add item |
+| --- | --- |
+| ![Queue view with saved items](docs/screenshots/Home_View.png) | ![Add item form with autofilled metadata](docs/screenshots/Add_Item.png) |
+
+| Session | Session complete |
+| --- | --- |
+| ![Active session card with Done/Skip](docs/screenshots/Session.png) | ![Session complete summary](docs/screenshots/Session_Complete.png) |
+
+| Settings |
+| --- |
+| ![Options page with scoring weight sliders](docs/screenshots/Settings.png) |
+
+---
+
 ## Algorithm
 
 DeQueue's session generator is a **0/1 knapsack** solved with bottom-up dynamic programming — the core algorithmic idea the whole project is built around. For full implementation details see the [design document § Core Algorithm](docs/design_documentation/DeQueue.md#3-core-algorithm).
