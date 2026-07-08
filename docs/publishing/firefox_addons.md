@@ -25,21 +25,19 @@ the live docs before actually submitting.
 ## Manifest / code requirements
 
 - ✅ **Manifest V3.** Already on MV3.
-- ⏳ **`browser_specific_settings.gecko.id` required for MV3.** Unlike MV2
-  (where the ID is optional), MV3 extensions must set an explicit ID before
-  submission. Format: an email-like string, e.g.
-  `dequeue@<yourdomain-or-handle>.example` — the `@string` form is fine and
-  doesn't need to resolve to a real address. Not currently present in
-  `src/manifest.json` — needs to be added under a new
-  `browser_specific_settings` key.
-- ⏳ **`gecko.data_collection_permissions` disclosure.** New Mozilla
+- ✅ **`browser_specific_settings.gecko.id` required for MV3.** Added to
+  `src/manifest.json`: `dequeue@lordzed86.example`. `.example` is an
+  IANA-reserved placeholder TLD — safe to keep permanently, not just a
+  stand-in, since the ID is never dereferenced as a real address. It must
+  stay fixed across every future submission, or AMO treats the next update
+  as a brand-new extension.
+- ✅ **`gecko.data_collection_permissions` disclosure.** New Mozilla
   requirement effective 2025-11-03 for newly submitted extensions (full
   rollout to all extensions in first half of 2026): must declare, in the
-  manifest, what data (if any) is collected/transmitted. DeQueue transmits
-  nothing off-device, so this should be a straightforward "none of the
-  above" declaration once we add the key — but it must be explicit, not
-  just true by omission. Needs to be filled in alongside the `gecko.id`
-  addition above.
+  manifest, what data (if any) is collected/transmitted. Added as
+  `{ required: ["none"] }` since DeQueue transmits nothing off-device.
+  `strict_min_version: "140.0"` was added alongside it per Mozilla's
+  recommendation, so Firefox versions predating this key aren't affected.
 - ✅ **Source review.** AMO requires reviewable source for all submissions,
   including transpiled/minified code. We ship plain, unbuilt JS — nothing
   to explain or provide separately here, unlike projects with a bundler
@@ -92,11 +90,8 @@ the live docs before actually submitting.
 
 **Real blockers to submission:**
 
-1. Missing `browser_specific_settings.gecko.id` in `manifest.json` — MV3
-   submissions are rejected by automated validation without it.
-2. Missing `gecko.data_collection_permissions` declaration.
-3. No developer account registered yet.
-4. No listing assets yet.
+1. No developer account registered yet.
+2. No listing assets yet.
 
 **Not required (already resolved by policy, no action needed):**
 
