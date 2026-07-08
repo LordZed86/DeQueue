@@ -28,16 +28,16 @@ Built for CS 398 — Algorithmic Problem Solving.
 
 ## Screenshots
 
-| Queue | Add item |
-| --- | --- |
+| Queue                                                          | Add item                                                                 |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------ |
 | ![Queue view with saved items](docs/screenshots/Home_View.png) | ![Add item form with autofilled metadata](docs/screenshots/Add_Item.png) |
 
-| Session | Session complete |
-| --- | --- |
+| Session                                                             | Session complete                                                   |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | ![Active session card with Done/Skip](docs/screenshots/Session.png) | ![Session complete summary](docs/screenshots/Session_Complete.png) |
 
-| Settings |
-| --- |
+| Settings                                                                   |
+| -------------------------------------------------------------------------- |
 | ![Options page with scoring weight sliders](docs/screenshots/Settings.png) |
 
 ---
@@ -124,7 +124,7 @@ src/
 ├── background/
 │   └── background.js          # Service worker — relays messages between popup and content script
 ├── content/
-│   ├── content.js             # Injected into active tabs — scrapes page metadata to pre-fill the add form
+│   ├── content.js             # Injected into the active tab on demand — scrapes page metadata to pre-fill the add form
 │   └── content.test.js
 ├── popup/
 │   ├── popup.html             # Extension popup UI (queue list, add item, session views)
@@ -220,17 +220,17 @@ npm run test:watch
 
 ## Tests
 
-157 tests across 7 files, all passing. See [design document § Testing Plan](docs/design_documentation/DeQueue.md#9-testing-plan) for rationale on what is and isn't unit tested.
+163 tests across 7 files, all passing. See [design document § Testing Plan](docs/design_documentation/DeQueue.md#9-testing-plan) for rationale on what is and isn't unit tested.
 
-| File                         | Tests | What it covers                                                                    |
-| ---------------------------- | ----- | --------------------------------------------------------------------------------- |
-| `core/knapsack.test.js`      | 17    | DP vs. brute-force agreement, edge cases, known optimal solutions                 |
-| `utils/scoring.test.js`      | 17    | Each scoring factor in isolation, output range, weight system, immutability       |
-| `utils/storage.test.js`      | 35    | All CRUD operations, settings merge, corrupt-data resilience, clearAll scoping    |
-| `core/queue.test.js`         | 23    | peek/dequeue/skip/toArray, skip cycling, buildSessionQueue sort order             |
-| `content/content.test.js`    | 42    | Metadata extraction (title, description, type, duration, topic), duration parsers |
-| `core/pipeline.test.js`      | 13    | Full pipeline integration, stress tests at 50–100 items, performance              |
-| `utils/achievements.test.js` | 10    | Achievement unlock conditions, duplicate prevention, empty-stats base case        |
+| File                         | Tests | What it covers                                                                           |
+| ---------------------------- | ----- | ---------------------------------------------------------------------------------------- |
+| `core/knapsack.test.js`      | 17    | DP vs. brute-force agreement, edge cases, known optimal solutions                        |
+| `utils/scoring.test.js`      | 22    | Each scoring factor in isolation (interest clamp, mood bias), output range, immutability |
+| `utils/storage.test.js`      | 35    | All CRUD operations, settings merge, corrupt-data resilience, clearAll scoping           |
+| `core/queue.test.js`         | 23    | peek/dequeue/skip/toArray, skip cycling, buildSessionQueue sort order                    |
+| `content/content.test.js`    | 42    | Metadata extraction (title, description, type, duration, topic), duration parsers        |
+| `core/pipeline.test.js`      | 14    | Full pipeline integration, stress tests at 50–100 items, performance                     |
+| `utils/achievements.test.js` | 10    | Achievement unlock conditions, duplicate prevention, empty-stats base case               |
 
 ---
 
@@ -249,11 +249,11 @@ See [design document § Architecture Overview](docs/design_documentation/DeQueue
 
 ## Documentation
 
-| Document | Description |
-| -------- | ----------- |
-| [Design Document](docs/design_documentation/DeQueue.md) | Architecture, data model, algorithm, storage, UI/UX, testing plan, and decisions log |
-| [Project Proposal](docs/proposal.md) | Original project proposal submitted for CS 398 |
-| [Dev Log](docs/notes/dev_log.md) | Chronological record of decisions and bugs as the project was built |
-| [Idea Brainstorm](docs/notes/idea_brainstorm.md) | Original brainstorm, P0/P1/P2 feature tracking, and hallway testing notes |
-| [Reflection Notes](docs/notes/reflection_notes.md) | Notes for the final reflection paper and project defense |
-| [AI Use Log](docs/notes/ai_use_log.md) | Transparent record of how AI assistance was used, what it contributed, and where human judgment was required |
+| Document                                                | Description                                                                                                  |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| [Design Document](docs/design_documentation/DeQueue.md) | Architecture, data model, algorithm, storage, UI/UX, testing plan, and decisions log                         |
+| [Project Proposal](docs/proposal.md)                    | Original project proposal submitted for CS 398                                                               |
+| [Dev Log](docs/notes/dev_log.md)                        | Chronological record of decisions and bugs as the project was built                                          |
+| [Idea Brainstorm](docs/notes/idea_brainstorm.md)        | Original brainstorm, P0/P1/P2 feature tracking, and hallway testing notes                                    |
+| [Reflection Notes](docs/notes/reflection_notes.md)      | Notes for the final reflection paper and project defense                                                     |
+| [AI Use Log](docs/notes/ai_use_log.md)                  | Transparent record of how AI assistance was used, what it contributed, and where human judgment was required |

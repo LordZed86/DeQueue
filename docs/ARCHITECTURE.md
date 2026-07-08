@@ -28,7 +28,9 @@ abstraction.
 
 ### Extension (current, working)
 
-Content script reads the **active tab's live DOM** directly. This is the
+A content script, injected on demand into only the active tab (not a
+persistent `<all_urls>` script — narrowed for storefront review, see
+ROADMAP.md), reads the **active tab's live DOM** directly. This is the
 easiest possible version of capture — you already have a rendered page with
 JS executed, paywalls resolved (if the user is logged in), everything. The
 extraction waterfall (`og:*` → `twitter:*` → JSON-LD → DOM fallback → null)
