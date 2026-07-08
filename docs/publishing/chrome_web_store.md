@@ -53,15 +53,19 @@ the live docs before actually submitting.
 
 ## Privacy policy
 
-- 🔄 **Privacy policy required.** Written — `PRIVACY.md` in the repo root
+- 🔄 **Privacy policy required.** Written — canonical source is
+  `docs/pages/index.md` (root `PRIVACY.md` is a stub pointing there) —
   covers what's read (on-demand active-tab metadata: title, description,
   type, duration, topic), what's stored (items/settings/achievements/
   streaks/points, all local via `localStorage` / `chrome.storage.session`),
-  and confirms no server, no accounts, nothing transmitted off-device. Still
-  needs to be hosted somewhere reachable by URL for the dashboard's privacy
-  field — GitHub Pages rendering `PRIVACY.md` is the leading option, pending
-  a project domain (`kjones.dev` or `debuggingmydegree.com`, both currently
-  unhosted).
+  and confirms no server, no accounts, nothing transmitted off-device.
+  Hosting via GitHub Pages, deployed by
+  `.github/workflows/pages.yml` (GitHub Actions method, publishing only
+  `docs/pages/` — not all of `docs/`, to keep the churning ROADMAP/dev-log
+  docs from becoming public pages). Will publish to
+  `https://lordzed86.github.io/DeQueue/` once Pages is enabled in repo
+  Settings → Pages (source: "GitHub Actions") — a one-time manual step in
+  the GitHub web UI.
 - ⏳ **Data-usage disclosure fields** in the dashboard (what's collected, how
   it's used, whether sold/shared with third parties — all "no" for us)
   must match the privacy policy and the code's actual behavior.

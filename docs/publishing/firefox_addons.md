@@ -55,10 +55,11 @@ the live docs before actually submitting.
 
 - 🔄 **No longer required to be hosted on AMO itself** (policy simplified
   2025-06). Developers are now encouraged to link to a self-hosted privacy
-  policy instead of pasting one into an AMO-hosted field. `PRIVACY.md` is
-  written and shared with the Chrome Web Store listing (see
-  `chrome_web_store.md`) — no separate policy needed, just needs a public
-  URL once hosting is set up, then link it in both listings.
+  policy instead of pasting one into an AMO-hosted field. Written and
+  shared with the Chrome Web Store listing (see `chrome_web_store.md` for
+  the GitHub Pages hosting setup) — no separate policy needed, just link
+  `https://lordzed86.github.io/DeQueue/` in both listings once Pages is
+  enabled.
 
 ---
 
