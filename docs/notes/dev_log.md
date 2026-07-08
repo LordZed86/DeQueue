@@ -568,3 +568,46 @@ Verified against the real markup/JS with a throwaway jsdom harness: confirmed no
 ### Test count
 
 163 tests, 7 files, all passing throughout. No regressions.
+
+---
+
+## Storefront Submission Prep (2026-07-08)
+
+With v1.1.0 stable on `main` and the Tier 1/P1 lists closed out, this session worked through the storefront blockers identified in `docs/publishing/chrome_web_store.md` and `docs/publishing/firefox_addons.md` — the goal being a closed/unlisted release that skips full platform review, to get real hallway testing going.
+
+### Permission narrowing: `<all_urls>` → on-demand injection
+
+Both storefront checklists flagged the persistent `content_scripts` block matching `<all_urls>` as broader than the actual use case (read metadata from the tab the user is on, only when they open the popup) and likely to draw manual-review scrutiny.
+
+`content_scripts` was dropped from `manifest.json` entirely. `background.js` now injects `content.js` into only the active tab, on demand, via `chrome.scripting.executeScript`, triggered when the popup opens. Permissions are now just `storage`, `activeTab`, `scripting` — no host permission at all.
+
+One non-obvious wrinkle: the Vite build wraps `content.js` as a module IIFE (for the exports used by its test suite), so the script's own completion value isn't a reliable way to get the extraction result back through `executeScript`. Fixed with a two-step injection: `content.js` stashes its result on `window.__dequeuePageMeta`, then `background.js` runs a second, tiny inline `executeScript` call to read that global back and delete it. Also, since `content.js` is no longer manifest-referenced, it had to be added to `vite.config.js`'s `additionalInputs` so the build still emits it to `dist/`.
+
+Verified manually: loaded the built `dist/` as an unpacked extension, confirmed autofill (title/URL/time/content-type) still populates correctly on the very first popup open against a real page — no reload needed, no regression from the old persistent-injection behavior.
+
+### Firefox MV3 manifest requirements
+
+AMO rejects MV3 submissions via automated validation without an explicit `gecko.id`, and requires a `gecko.data_collection_permissions` declaration for new submissions as of 2025-11-03. Added `browser_specific_settings.gecko` to `manifest.json`: `id: "dequeue@lordzed86.example"` (placeholder using the IANA-reserved `.example` TLD — never dereferenced as a real address, safe to keep permanently, but must stay fixed across every future submission or AMO treats the next update as a brand-new extension), `strict_min_version: "140.0"` per Mozilla's recommendation, and `data_collection_permissions: { required: ["none"] }` since DeQueue transmits nothing off-device. Chrome ignores this key entirely, so it's purely additive.
+
+### Privacy policy
+
+Both stores require a privacy policy before listing. Wrote one covering what's read (on-demand active-tab metadata only, nothing in the background), what's stored (items/settings/achievements/streaks/points, all local via `localStorage`/the extension storage API's session area — described browser-neutrally since this is a WebExtensions standard, not Chrome-specific), and confirmed nothing is transmitted off-device.
+
+Hosting needed its own decision: GitHub Pages was the obvious free option since it's built into the repo, but the simple "deploy from branch" method only supports repo root or `/docs` as a source folder — no arbitrary subfolder. Publishing all of `/docs` was ruled out because it churns constantly (ROADMAP items get resolved, dev log entries pile up, files get merged/deleted) and would mean stale or broken public URLs over time. Went with the GitHub Actions deploy method instead, which can publish from any path — added `.github/workflows/pages.yml` scoped to only `docs/pages/`. The canonical policy content now lives at `docs/pages/index.md`; the root `PRIVACY.md` is a stub pointing at both the canonical source and the hosted URL, rather than a second copy that could drift out of sync. Publishes to `https://lordzed86.github.io/DeQueue/` once Pages is enabled in repo Settings (a one-time manual toggle, not something git-scriptable).
+
+### Store listing copy, accounts, screenshots
+
+Drafted shared short/detailed descriptions, a single-purpose statement, permission justifications, and a suggested category (Productivity) in `docs/publishing/store_listing.md` — reusable across both dashboards since the pitch is identical.
+
+Registered both developer accounts. Chrome Web Store asked for a "trader" classification (EU DSA terminology — a business/commercial-purpose distinction, not the finance meaning); selected non-trader, matching the actual current status (individual, free, no registered business, no monetization yet). Skipped the optional verified-publisher badge, service accounts, and organization publishing — none apply to a solo, manually-published extension with no CI-driven auto-publish pipeline.
+
+Captured 5 screenshots (queue view, add-item with autofill, active session, session complete, options page) and embedded them in the README right after the feature summary. Stored under `docs/screenshots/` rather than `src/assets/` — that directory is Vite's `publicDir` and gets copied verbatim into `dist/`, which would have shipped ~4MB of marketing screenshots inside the actual extension package. Confirmed with a clean rebuild that `dist/` only contains the real extension icons.
+
+### Still open
+
+- Privacy policy is written and the hosting pipeline is built, but the actual deploy hasn't fired yet — the Pages workflow only triggers on pushes to `main`, and this work landed on `dev`. Will go live on the next `dev` → `main` promotion.
+- Everything else in `docs/publishing/` (screenshots, descriptions, justifications, category) still needs to be manually uploaded/pasted into each dashboard during actual submission — that's a dashboard-clicking step, not something scriptable from the repo.
+
+### Test count
+
+163 tests, 7 files, all passing throughout. No regressions — this was entirely manifest/docs/tooling work outside the tested engine layer, aside from the background.js/content.js injection rework, which is covered by existing content-extraction tests (the pure extractor functions didn't change) and was verified manually against a real browser since it's browser-API glue code outside what the jsdom test harness exercises.

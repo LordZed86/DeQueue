@@ -2,7 +2,7 @@
 
 **Author:** Kellen Jones
 **Course:** CS 398 — Algorithmic Problem Solving
-**Last Updated:** 2026-06-25
+**Last Updated:** 2026-07-08
 
 ---
 
@@ -21,8 +21,8 @@ src/
 │   └── background.js      # Service worker; runs persistently in the background
 │                          # Handles storage reads/writes and cross-component messaging
 ├── content/
-│   └── content.js         # Injected into active web pages
-│                          # Responsible for scraping metadata from the current tab
+│   └── content.js         # Injected into the active tab on demand (not a persistent
+│                          # content script — see "Data Flow" below), scrapes metadata
 ├── popup/
 │   ├── popup.html         # The UI that appears when the extension icon is clicked
 │   ├── popup.js           # Drives the popup — session generator, item list, filtering
@@ -48,12 +48,22 @@ src/
 ```plaintext
 User clicks extension icon on a webpage
   → popup.js sends GET_PAGE_META to background.js (MV3 requires this relay)
-  → background.js forwards the message to content.js on the active tab
-  → content.js scrapes the page and returns { title, url, description, estimatedTime, ... }
+  → background.js injects content.js into the active tab on demand via
+    chrome.scripting.executeScript — no persistent content script, no
+    <all_urls> host permission (see "Resolved: narrowed permissions" below)
+  → content.js scrapes the page, stashes the result on
+    window.__dequeuePageMeta (module-IIFE wrapping means its own completion
+    value isn't reliable as an executeScript return)
+  → background.js runs a second, tiny inline executeScript call to read
+    window.__dequeuePageMeta back and delete it
   → popup.js pre-fills the "Add Item" form with that metadata
   → User reviews/edits and confirms
   → popup.js calls saveItem() from utils/storage.js
 ```
+
+### Resolved: narrowed permissions (`<all_urls>` → on-demand injection)
+
+The extension originally declared a persistent `content_scripts` entry matching `<all_urls>`, injecting `content.js` into every page on load. Both Chrome Web Store and Firefox Add-ons scrutinize broad host permissions during review, and the actual use case only ever needs the current tab, only at the moment the popup opens. `content_scripts` was dropped from `manifest.json` entirely; permissions are now just `storage`, `activeTab`, `scripting` — no host permission at all. `content.js` is no longer manifest-referenced, so it's kept in the Vite build via `additionalInputs` in `vite.config.js` rather than being picked up automatically.
 
 ### Data Flow (Generating a Session)
 
@@ -285,7 +295,7 @@ Mood was previously captured at two moments with no reason to agree: once at sav
 
 ## 6. Metadata Extraction
 
-The content script (`content/content.js`) runs on the active tab when the user opens the popup and clicks "Add this page." It attempts to read metadata from the page's HTML before asking the user to fill anything in manually.
+The content script (`content/content.js`) is injected into the active tab on demand — via `chrome.scripting.executeScript`, triggered when the user opens the popup — and attempts to read metadata from the page's HTML before asking the user to fill anything in manually. It's not a persistent content script; see §1 "Resolved: narrowed permissions" for why.
 
 ### What to try to extract
 
@@ -308,7 +318,7 @@ The content script (`content/content.js`) runs on the active tab when the user o
 
 ### Resolved: content script not injected on some pages
 
-Root cause confirmed: content scripts can't be injected into restricted pages (`chrome://`, `about:`, extension/store pages) or into tabs that were already open before the extension was installed/reloaded — this is a browser-level restriction, not something fixable from the manifest. In those cases `background.js` hits its `chrome.runtime.lastError` branch and returns null. Previously the form just stayed silently empty; now the add-item view shows a neutral inline hint ("Couldn't read this page — enter details manually") distinguishing that case from a real error, so manual entry doesn't feel like a mystery failure.
+Root cause confirmed: content scripts can't be injected into restricted pages (`chrome://`, `about:`, extension/store pages) or into tabs that were already open before the extension was installed/reloaded — this is a browser-level restriction, not something fixable from the manifest. In those cases `background.js`'s `chrome.scripting.executeScript` call hits `chrome.runtime.lastError` and returns null. Previously the form just stayed silently empty; now the add-item view shows a neutral inline hint ("Couldn't read this page — enter details manually") distinguishing that case from a real error, so manual entry doesn't feel like a mystery failure.
 
 ### Open Questions
 
@@ -506,12 +516,14 @@ Remaining / future:
 | 17 | Staleness ceiling — fixed 30 days vs. user-adjustable? | **Decided: fixed at 30 days** — the scoring weights are already the user-adjustable tuning knob |
 | 18 | Interest rating — 5-point stars vs. lighter-weight signal? | **Decided: optional 3-point toggle** (Low/Neutral/High), defaults to neutral, no longer required to save — reduces save-time decision friction; see §5 |
 | 19 | Mood — per-item tag at save time, or session-time input only? | **Decided: session-time only** — a per-item mood tag asked the user to predict their future mood days/weeks ahead of opening the item, an easy-to-get-wrong speculative decision; `item.mood` and the mood filter are removed, the session mood picker now biases scoring via `timeEstimate`/`interest` instead of exact-matching a tag; see §5 |
+| 20 | Content script injection — persistent `<all_urls>` or on-demand? | **Decided: on-demand** — `content_scripts` dropped from `manifest.json`; `background.js` injects `content.js` into only the active tab, only when the popup opens, via `chrome.scripting.executeScript`. Permissions reduced to `storage`, `activeTab`, `scripting` — no host permission. Both storefronts flag broad host permissions during review, and the use case never needed more than the current tab at invocation time; see §1 and §6 |
+| 21 | Firefox MV3 manifest requirements — `gecko.id` and data collection disclosure | **Decided: added `browser_specific_settings.gecko`** — `id: "dequeue@lordzed86.example"` (placeholder using the IANA-reserved `.example` TLD, never dereferenced as a real address, but must stay fixed across all future submissions or AMO treats the next update as a new extension), `strict_min_version: "140.0"`, and `data_collection_permissions: { required: ["none"] }` since DeQueue transmits nothing off-device. Chrome ignores this key entirely |
 
 ---
 
 ## 11. Known Bugs & Pre-release Cleanup
 
-The extension shipped as v1.0.0. The following issues were identified through hallway testing and a code audit and must be resolved before publishing to the Chrome Web Store or Firefox Add-ons.
+The extension shipped as v1.0.0, then v1.1.0. The following issues were identified through hallway testing and a code audit and must be resolved before publishing to the Chrome Web Store or Firefox Add-ons — all are now resolved; see `docs/publishing/` for the full storefront submission checklists (accounts, listing assets, privacy policy hosting) beyond what's tracked here.
 
 ### P1 — User-visible bugs
 
