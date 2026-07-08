@@ -147,11 +147,17 @@ shared across both stores unless noted:
   tiny inline `executeScript` call that also deletes the global. Verified
   manually against a real page (autofill still populates title/URL/time/
   content-type on first click, no reload needed).
-- ⏳ **Firefox-specific manifest additions** — `browser_specific_settings`
-  block needed with `gecko.id` (required for MV3 submissions, currently
-  missing) and `gecko.data_collection_permissions` (new Mozilla disclosure
-  requirement, effective for new submissions since 2025-11-03). Chrome does
-  not need or use this key.
+- ✅ **Firefox-specific manifest additions** — `browser_specific_settings.gecko`
+  added to `manifest.json`: `id: "dequeue@lordzed86.example"` (opaque
+  identifier, not a real address — must stay fixed across all future updates
+  or AMO treats the next submission as a new extension; `.example` is an
+  IANA-reserved placeholder TLD, safe to use permanently, not just a
+  stand-in to swap later), `strict_min_version: "140.0"` (Mozilla-recommended
+  alongside `data_collection_permissions` so older Firefox versions that
+  predate the key aren't affected), and `data_collection_permissions: {
+  required: ["none"] }` since DeQueue is fully local and transmits nothing
+  off-device. Chrome ignores this key entirely, so it's additive with no
+  cross-store impact.
 - ⏳ **Developer accounts** — neither registered yet (Chrome: one-time $5
   fee; Firefox: free).
 - ⏳ **Listing assets** — descriptions, screenshots (none captured yet),

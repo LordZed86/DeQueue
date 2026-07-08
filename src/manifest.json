@@ -8,6 +8,16 @@
 
   "permissions": ["storage", "activeTab", "scripting"],
 
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "dequeue@lordzed86.example",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    }
+  },
+
   "action": {
     "default_popup": "src/popup/popup.html",
     "default_icon": {
