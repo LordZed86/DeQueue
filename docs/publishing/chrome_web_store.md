@@ -17,8 +17,9 @@ the live docs before actually submitting.
 
 ## Account setup
 
-- ⏳ Register a Chrome Web Store developer account (one-time $5 fee), verify
-  developer email.
+- ✅ Chrome Web Store developer account registered (individual/non-trader —
+  no business entity, no monetization currently; revisit classification if
+  that changes later).
 - ⏳ (Optional) Verified publisher badge — requires domain verification
   (~$10–15/yr). Not required to publish; skip unless we want the badge.
 
@@ -34,42 +35,37 @@ the live docs before actually submitting.
   fetches of executable code — this should already pass, but worth a final
   read-through of `background.js` and `content.js` immediately before
   submission to confirm nothing was added that violates it.
-- 🔄 **Narrowest permissions necessary.** Currently requests `storage`,
-  `activeTab`, `scripting`, plus a `content_scripts` block matching
-  `<all_urls>` (persistent injection on every page load). `<all_urls>` is
-  broader than the use case needs — see the on-demand-injection rework
-  tracked in ROADMAP.md pre-publish checklist. Target: drop the persistent
-  `content_scripts` entry, inject via `chrome.scripting.executeScript` from
-  the popup on the active tab only, rely on `activeTab` instead of a host
-  permission.
-- ⏳ **Single purpose.** Extension must have one narrow, easy-to-understand
-  purpose, stated clearly in the dashboard's single-purpose field. Ours:
-  "save articles/videos and build a time-boxed session from them via
-  knapsack prioritization." Draft this field's exact wording during listing
-  setup.
-- ⏳ **Permission justifications.** Each requested permission needs a
-  dashboard field explaining why it's needed. Draft ahead of time:
-  - `storage` — persist saved items, settings, and points locally.
-  - `activeTab` — read metadata (title/description/type/duration/topic)
-    from the tab the user is actively adding, only when they invoke the
-    extension.
-  - `scripting` — inject the metadata-extraction function into the active
-    tab on demand (replaces persistent `content_scripts` once reworked).
+- ✅ **Narrowest permissions necessary.** Requests only `storage`,
+  `activeTab`, `scripting` — no host permissions. The persistent
+  `content_scripts` (`<all_urls>`) block is gone; `background.js` injects
+  `content/content.js` on demand via `chrome.scripting.executeScript` into
+  the active tab only, triggered when the popup opens. See ROADMAP.md for
+  implementation notes.
+- 🔄 **Single purpose.** Extension must have one narrow, easy-to-understand
+  purpose, stated clearly in the dashboard's single-purpose field. Drafted
+  in `store_listing.md` — still needs to be pasted into the dashboard during
+  listing setup.
+- 🔄 **Permission justifications.** Each requested permission needs a
+  dashboard field explaining why it's needed. Drafted in `store_listing.md`
+  — still needs to be pasted into the dashboard.
 
 ---
 
 ## Privacy policy
 
-- ⏳ **Privacy policy required.** Any product handling user data needs an
-  accurate, up-to-date privacy policy linked from the dashboard's privacy
-  field. DeQueue reads page metadata (title, description, type, duration,
-  topic) from the active tab and stores saved items/settings in
-  `localStorage` / `chrome.storage.session` — no server, no accounts, no
-  data leaves the device. That's a straightforward policy to write (data
-  collected, why, "never transmitted, stored locally only"), but it doesn't
-  exist yet. Needs to be hosted somewhere reachable by URL — a repo-hosted
-  `PRIVACY.md` rendered via GitHub Pages, or similar, would satisfy this
-  without needing a separate site.
+- 🔄 **Privacy policy required.** Written — canonical source is
+  `docs/pages/index.md` (root `PRIVACY.md` is a stub pointing there) —
+  covers what's read (on-demand active-tab metadata: title, description,
+  type, duration, topic), what's stored (items/settings/achievements/
+  streaks/points, all local via `localStorage` / `chrome.storage.session`),
+  and confirms no server, no accounts, nothing transmitted off-device.
+  Hosting via GitHub Pages, deployed by
+  `.github/workflows/pages.yml` (GitHub Actions method, publishing only
+  `docs/pages/` — not all of `docs/`, to keep the churning ROADMAP/dev-log
+  docs from becoming public pages). Will publish to
+  `https://lordzed86.github.io/DeQueue/` once Pages is enabled in repo
+  Settings → Pages (source: "GitHub Actions") — a one-time manual step in
+  the GitHub web UI.
 - ⏳ **Data-usage disclosure fields** in the dashboard (what's collected, how
   it's used, whether sold/shared with third parties — all "no" for us)
   must match the privacy policy and the code's actual behavior.
@@ -78,17 +74,22 @@ the live docs before actually submitting.
 
 ## Store listing assets
 
-- ⏳ **Description.** Short + detailed descriptions for the listing (distinct
-  from `manifest.json`'s description field).
-- ⏳ **Screenshots.** 1–5 required, actual extension UI (not marketing
-  graphics), 1280×800 or 640×400. None exist yet — need to capture the
-  popup in its main states (empty queue, add-item, active session, done).
+- 🔄 **Description.** Short + detailed descriptions written in
+  `store_listing.md` (distinct from `manifest.json`'s description field) —
+  still needs to be pasted into the dashboard.
+- 🔄 **Screenshots.** 1–5 required, actual extension UI (not marketing
+  graphics), 1280×800 or 640×400. 5 captured, covering queue view, add-item
+  (autofilled), active session, session complete, and options — see
+  `docs/screenshots/` (also embedded in the README). Still need to be
+  uploaded to the dashboard.
 - ✅ **Store icon, 128×128.** `icon128.png` in `src/assets/icons/` was
   regenerated from `icon.svg` (the PNGs had gone stale and were rendering
   as a blank background square, missing the "DQ" wordmark and underline
   accent from the source SVG). Icons at all three sizes (16/48/128) now
   match the source design.
-- ⏳ **Category and language** selection in the dashboard.
+- 🔄 **Category and language** selection in the dashboard. Suggested
+  category (**Productivity**) drafted in `store_listing.md`; language is a
+  dashboard dropdown pick, no drafting needed.
 
 ---
 
@@ -108,12 +109,12 @@ the live docs before actually submitting.
 
 **Real blockers to submission:**
 
-1. No privacy policy (required given current data handling + permissions).
-2. `<all_urls>` content script is broader than necessary and likely to draw
-   manual-review scrutiny or rejection — narrowing to on-demand
-   `activeTab` + `scripting` injection avoids this.
-3. No developer account registered yet.
-4. No listing assets (screenshots, descriptions) yet.
+1. Privacy policy written (`PRIVACY.md`) but not yet hosted at a public URL
+   — needed for the dashboard's privacy field.
+2. Everything else (screenshots, descriptions, single-purpose/permission
+   justifications, category) is drafted/captured — see `store_listing.md`
+   and `docs/screenshots/` — and just needs uploading/pasting into the
+   dashboard during actual submission.
 
 **Everything else above is doable in parallel** and isn't blocking, but
 should be done before clicking submit rather than after.

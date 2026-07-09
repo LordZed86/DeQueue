@@ -1,12 +1,22 @@
 {
   "manifest_version": 3,
   "name": "DeQueue",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Knapsack-powered reading queue for ADHD brains. Set a time budget, get your best items.",
 
   "options_page": "src/options/options.html",
 
   "permissions": ["storage", "activeTab", "scripting"],
+
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "dequeue@lordzed86.example",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    }
+  },
 
   "action": {
     "default_popup": "src/popup/popup.html",
@@ -22,13 +32,6 @@
     "service_worker": "src/background/background.js",
     "type": "module"
   },
-
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["src/content/content.js"]
-    }
-  ],
 
   "icons": {
     "16": "icons/icon16.png",

@@ -1,18 +1,23 @@
 /**
- * Content script — scrapes metadata from the active page and returns it to
- * the background worker, which relays it to the popup's add-item form.
+ * Content script — scrapes metadata from the active page.
+ *
+ * Injected on demand into the active tab via chrome.scripting.executeScript
+ * (see background.js) rather than declared as a persistent content script,
+ * so the extension only needs activeTab + scripting, not a host permission
+ * on every page.
+ *
+ * The build wraps this file as a module IIFE, so its own completion value
+ * isn't a reliable way to hand the result back to executeScript's caller.
+ * Instead, stash the result on `window` under a namespaced key; background.js
+ * reads it back with a second, tiny inline executeScript call and deletes it.
  *
  * Extraction priority per field is documented in the design doc (section 6).
  * Every extractor is defensive: a missing element or parse failure returns
  * null so the popup falls back to manual entry rather than crashing.
  */
 
-if (typeof chrome !== "undefined" && chrome.runtime?.onMessage) {
-  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    if (message.type !== "GET_PAGE_META") return false;
-    sendResponse(extractPageMeta());
-    return false;
-  });
+if (typeof chrome !== "undefined" && chrome.runtime?.id) {
+  window.__dequeuePageMeta = extractPageMeta();
 }
 
 function extractPageMeta() {

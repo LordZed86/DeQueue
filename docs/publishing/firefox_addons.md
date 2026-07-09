@@ -17,66 +17,63 @@ the live docs before actually submitting.
 
 ## Account setup
 
-- ⏳ Register a Firefox Add-on Developer account (free, no fee unlike
-  Chrome).
+- ✅ Firefox Add-on Developer account registered.
 
 ---
 
 ## Manifest / code requirements
 
 - ✅ **Manifest V3.** Already on MV3.
-- ⏳ **`browser_specific_settings.gecko.id` required for MV3.** Unlike MV2
-  (where the ID is optional), MV3 extensions must set an explicit ID before
-  submission. Format: an email-like string, e.g.
-  `dequeue@<yourdomain-or-handle>.example` — the `@string` form is fine and
-  doesn't need to resolve to a real address. Not currently present in
-  `src/manifest.json` — needs to be added under a new
-  `browser_specific_settings` key.
-- ⏳ **`gecko.data_collection_permissions` disclosure.** New Mozilla
+- ✅ **`browser_specific_settings.gecko.id` required for MV3.** Added to
+  `src/manifest.json`: `dequeue@lordzed86.example`. `.example` is an
+  IANA-reserved placeholder TLD — safe to keep permanently, not just a
+  stand-in, since the ID is never dereferenced as a real address. It must
+  stay fixed across every future submission, or AMO treats the next update
+  as a brand-new extension.
+- ✅ **`gecko.data_collection_permissions` disclosure.** New Mozilla
   requirement effective 2025-11-03 for newly submitted extensions (full
   rollout to all extensions in first half of 2026): must declare, in the
-  manifest, what data (if any) is collected/transmitted. DeQueue transmits
-  nothing off-device, so this should be a straightforward "none of the
-  above" declaration once we add the key — but it must be explicit, not
-  just true by omission. Needs to be filled in alongside the `gecko.id`
-  addition above.
+  manifest, what data (if any) is collected/transmitted. Added as
+  `{ required: ["none"] }` since DeQueue transmits nothing off-device.
+  `strict_min_version: "140.0"` was added alongside it per Mozilla's
+  recommendation, so Firefox versions predating this key aren't affected.
 - ✅ **Source review.** AMO requires reviewable source for all submissions,
   including transpiled/minified code. We ship plain, unbuilt JS — nothing
   to explain or provide separately here, unlike projects with a bundler
   step.
 - ✅ **File size.** 200 MB max for validation to pass — nowhere close, not a
   concern for this project.
-- 🔄 **Permissions.** Same underlying concern as the Chrome checklist: the
-  persistent `<all_urls>` content script is broader than the on-demand
-  metadata-read use case needs. AMO reviewers scrutinize broad host
-  permissions similarly to Chrome, though Firefox's manual-review bar has
-  historically been a bit more lenient than Chrome's automated rejection
-  flow. Fixing this once (on-demand `scripting` injection via `activeTab`)
-  covers both stores — no need to solve it twice.
+- ✅ **Permissions.** Same underlying concern as the Chrome checklist, fixed
+  once for both: the persistent `<all_urls>` content script is gone,
+  replaced with on-demand `chrome.scripting.executeScript` injection into
+  the active tab via `activeTab` + `scripting`. No host permissions
+  requested.
 
 ---
 
 ## Privacy policy
 
-- ⏳ **No longer required to be hosted on AMO itself** (policy simplified
+- 🔄 **No longer required to be hosted on AMO itself** (policy simplified
   2025-06). Developers are now encouraged to link to a self-hosted privacy
-  policy instead of pasting one into an AMO-hosted field. Since we're
-  already writing one for the Chrome Web Store listing (see
-  `chrome_web_store.md`), the same document/URL can be linked here — no
-  separate policy needed, just make sure the link is added to the AMO
-  listing once the policy exists.
+  policy instead of pasting one into an AMO-hosted field. Written and
+  shared with the Chrome Web Store listing (see `chrome_web_store.md` for
+  the GitHub Pages hosting setup) — no separate policy needed, just link
+  `https://lordzed86.github.io/DeQueue/` in both listings once Pages is
+  enabled.
 
 ---
 
 ## Store listing assets
 
-- ⏳ **Description** for the AMO listing.
-- ⏳ **Screenshots** — same captures used for the Chrome listing should be
-  reusable here; confirm AMO's size/format constraints match before
-  reusing verbatim.
+- 🔄 **Description.** Same copy as the Chrome listing, drafted once in
+  `store_listing.md` — still needs to be pasted into the AMO dashboard.
+- 🔄 **Screenshots** — same 5 captures used for the Chrome listing (see
+  `docs/screenshots/`) should be reusable here; confirm AMO's size/format
+  constraints match before reusing verbatim, then upload.
 - ✅ **Icon.** Same `icon128.png` as the Chrome listing — regenerated from
   source SVG, no longer a blank placeholder (see `chrome_web_store.md`).
-- ⏳ **Category** selection during listing setup.
+- 🔄 **Category** selection during listing setup. Suggested category
+  (**Productivity**) drafted in `store_listing.md`.
 
 ---
 
@@ -94,13 +91,11 @@ the live docs before actually submitting.
 
 **Real blockers to submission:**
 
-1. Missing `browser_specific_settings.gecko.id` in `manifest.json` — MV3
-   submissions are rejected by automated validation without it.
-2. Missing `gecko.data_collection_permissions` declaration.
-3. `<all_urls>` content script — same fix as the Chrome checklist, shared
-   across both stores.
-4. No developer account registered yet.
-5. No listing assets yet.
+1. Everything (screenshots, description, category) is captured/drafted —
+   see `store_listing.md` and `docs/screenshots/` — and just needs
+   uploading/pasting into the AMO dashboard during actual submission.
+   Privacy policy link still needs a hosted URL (see `chrome_web_store.md`)
+   before either listing can go live.
 
 **Not required (already resolved by policy, no action needed):**
 
