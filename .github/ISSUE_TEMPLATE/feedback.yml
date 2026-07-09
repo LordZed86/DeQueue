@@ -1,0 +1,47 @@
+name: General feedback
+description: Share what worked, what didn't, or general impressions after using DeQueue
+labels: ["feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is for general impressions, not bugs or feature requests —
+        those have their own templates. Anything you share here helps
+        shape what gets prioritized next.
+  - type: textarea
+    id: goal
+    attributes:
+      label: What were you trying to do?
+      description: e.g. clearing a backlog of saved articles, testing it during a work break, etc.
+    validations:
+      required: false
+  - type: textarea
+    id: worked
+    attributes:
+      label: What worked well?
+    validations:
+      required: false
+  - type: textarea
+    id: confusing
+    attributes:
+      label: What was confusing, frustrating, or didn't work as expected?
+    validations:
+      required: false
+  - type: dropdown
+    id: keep-using
+    attributes:
+      label: Would you keep using DeQueue?
+      options:
+        - "Yes"
+        - "Probably"
+        - "Not sure"
+        - "Probably not"
+        - "No"
+    validations:
+      required: false
+  - type: textarea
+    id: other
+    attributes:
+      label: Anything else?
+    validations:
+      required: false
