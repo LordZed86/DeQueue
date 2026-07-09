@@ -2,7 +2,7 @@
 
 ![Tests](https://github.com/LordZed86/DeQueue/actions/workflows/test.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-GPL--3.0-blue)
-![Version](https://img.shields.io/badge/version-1.1.0-informational)
+![Version](https://img.shields.io/badge/version-1.2.0-informational)
 ![JavaScript](https://img.shields.io/badge/JavaScript-ES2022-yellow?logo=javascript)
 ![Manifest V3](https://img.shields.io/badge/WebExtensions-MV3-brightgreen?logo=googlechrome)
 ![Tests](https://img.shields.io/badge/tests-163%20passing-brightgreen)
