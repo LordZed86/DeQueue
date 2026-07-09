@@ -174,3 +174,18 @@ input[type="range"] {
   color: var(--color-text);
   border-color: var(--color-text-muted);
 }
+
+.feedback-footer {
+  padding: 16px 24px 24px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.feedback-footer a {
+  color: var(--color-accent);
+}
+
+.feedback-footer a:hover {
+  color: var(--color-accent-hover);
+}

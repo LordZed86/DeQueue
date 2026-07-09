@@ -257,3 +257,12 @@ See [design document § Architecture Overview](docs/design_documentation/DeQueue
 | [Idea Brainstorm](docs/notes/idea_brainstorm.md)        | Original brainstorm, P0/P1/P2 feature tracking, and hallway testing notes                                    |
 | [Reflection Notes](docs/notes/reflection_notes.md)      | Notes for the final reflection paper and project defense                                                     |
 | [AI Use Log](docs/notes/ai_use_log.md)                  | Transparent record of how AI assistance was used, what it contributed, and where human judgment was required |
+
+---
+
+## Feedback
+
+Trying DeQueue and have thoughts? Both are welcome, no preference:
+
+- [Open a GitHub issue](../../issues/new?template=feedback.yml) — bugs and feature requests have their own templates too
+- [Fill out this short form](https://docs.google.com/forms/d/e/1FAIpQLSemYri-EzlVDvgs0OAzkBnv5rYtge7FBpnQjNk3kjsmpKbcJw/viewform?usp=header) — no GitHub account needed
