@@ -3,3 +3,6 @@ contact_links:
   - name: Security vulnerability
     url: https://github.com/LordZed86/DeQueue/security/advisories/new
     about: Please report security issues privately rather than in a public issue.
+  - name: Feedback form (no GitHub account needed)
+    url: https://docs.google.com/forms/d/e/1FAIpQLSemYri-EzlVDvgs0OAzkBnv5rYtge7FBpnQjNk3kjsmpKbcJw/viewform?usp=header
+    about: Prefer not to use GitHub? Share feedback anonymously via this short form instead.
