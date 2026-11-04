@@ -17,15 +17,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/LordZed86/CS_398_Final-Project.git"
+    "url": "git+https://github.com/LordZed86/DeQueue.git"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Kellen Jones",
+  "license": "GPL-3.0",
   "bugs": {
-    "url": "https://github.com/LordZed86/CS_398_Final-Project/issues"
+    "url": "https://github.com/LordZed86/DeQueue/issues"
   },
-  "homepage": "https://github.com/LordZed86/CS_398_Final-Project#readme",
+  "homepage": "https://github.com/LordZed86/DeQueue#readme",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@vitest/browser": "^4.1.8",
